@@ -28,12 +28,21 @@ describe('MarketingLayoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render brand title, hero section, and architecture cards', () => {
+  it('should render brand title, hero section, architecture cards, and 10 modules', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand-name')?.textContent).toContain('Orbit');
     expect(compiled.querySelector('.hero-title')?.textContent).toContain('One Unified Operating System');
     expect(compiled.querySelectorAll('.feature-card').length).toBe(3);
-    expect(compiled.querySelectorAll('.module-card').length).toBe(8);
+    expect(compiled.querySelectorAll('.module-card').length).toBe(10);
+    expect(compiled.querySelectorAll('.pricing-tier-card').length).toBe(3);
+  });
+
+  it('should toggle annual and monthly billing cycle', () => {
+    expect(component.annualBilling).toBeTrue();
+    component.toggleBilling();
+    expect(component.annualBilling).toBeFalse();
+    component.toggleBilling();
+    expect(component.annualBilling).toBeTrue();
   });
 
   it('should launch quick demo with specified role and route to workspace tasks', () => {

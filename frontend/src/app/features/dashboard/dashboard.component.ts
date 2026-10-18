@@ -61,14 +61,26 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
       </div>
 
       <!-- Key Metrics Row -->
+      <!-- Key Metrics Row with Sparklines -->
       <div class="metrics-grid">
         <div class="glass-panel metric-card">
           <div class="metric-top">
             <span class="metric-title">OPERATING BRANCHES</span>
             <div class="metric-icon icon-cyan">🏢</div>
           </div>
-          <div class="metric-num">{{ company?.branchCount || 2 }}</div>
-          <div class="metric-sub">Distributed enterprise facilities</div>
+          <div class="metric-body">
+            <div>
+              <div class="metric-num">{{ company?.branchCount || 2 }}</div>
+              <div class="metric-sub">Distributed enterprise facilities</div>
+            </div>
+            <div class="sparkline-wrap">
+              <svg width="68" height="26" viewBox="0 0 68 26" fill="none">
+                <path d="M2,20 Q18,8 34,16 T66,4" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+                <path d="M2,20 Q18,8 34,16 T66,4 L66,26 L2,26 Z" fill="rgba(6, 182, 212, 0.1)"/>
+              </svg>
+              <span class="metric-trend text-cyan">+12% MoM</span>
+            </div>
+          </div>
         </div>
 
         <div class="glass-panel metric-card">
@@ -76,8 +88,19 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
             <span class="metric-title">DEPARTMENTS</span>
             <div class="metric-icon icon-violet">📁</div>
           </div>
-          <div class="metric-num">{{ company?.departmentCount || 2 }}</div>
-          <div class="metric-sub">Functional operating divisions</div>
+          <div class="metric-body">
+            <div>
+              <div class="metric-num">{{ company?.departmentCount || 2 }}</div>
+              <div class="metric-sub">Functional operating divisions</div>
+            </div>
+            <div class="sparkline-wrap">
+              <svg width="68" height="26" viewBox="0 0 68 26" fill="none">
+                <path d="M2,18 Q18,12 34,14 T66,6" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round"/>
+                <path d="M2,18 Q18,12 34,14 T66,6 L66,26 L2,26 Z" fill="rgba(139, 92, 246, 0.1)"/>
+              </svg>
+              <span class="metric-trend text-violet">100% Active</span>
+            </div>
+          </div>
         </div>
 
         <div class="glass-panel metric-card">
@@ -85,8 +108,19 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
             <span class="metric-title">EMPLOYEES DIRECTORY</span>
             <div class="metric-icon icon-indigo">👥</div>
           </div>
-          <div class="metric-num">{{ company?.employeeCount || 3 }}</div>
-          <div class="metric-sub">Decoupled identity profiles</div>
+          <div class="metric-body">
+            <div>
+              <div class="metric-num">{{ company?.employeeCount || 3 }}</div>
+              <div class="metric-sub">Decoupled identity profiles</div>
+            </div>
+            <div class="sparkline-wrap">
+              <svg width="68" height="26" viewBox="0 0 68 26" fill="none">
+                <path d="M2,22 Q18,18 34,10 T66,3" stroke="#6366f1" stroke-width="2" stroke-linecap="round"/>
+                <path d="M2,22 Q18,18 34,10 T66,3 L66,26 L2,26 Z" fill="rgba(99, 102, 241, 0.1)"/>
+              </svg>
+              <span class="metric-trend text-indigo">+33% Q3</span>
+            </div>
+          </div>
         </div>
 
         <div class="glass-panel metric-card">
@@ -94,8 +128,102 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
             <span class="metric-title">ACTIVE WORK ITEMS</span>
             <div class="metric-icon icon-emerald">⚡</div>
           </div>
-          <div class="metric-num">{{ tasks.length }}</div>
-          <div class="metric-sub">Role-scoped task items</div>
+          <div class="metric-body">
+            <div>
+              <div class="metric-num">{{ tasks.length }}</div>
+              <div class="metric-sub">Role-scoped task items</div>
+            </div>
+            <div class="sparkline-wrap">
+              <svg width="68" height="26" viewBox="0 0 68 26" fill="none">
+                <path d="M2,16 Q18,22 34,12 T66,5" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+                <path d="M2,16 Q18,22 34,12 T66,5 L66,26 L2,26 Z" fill="rgba(16, 185, 129, 0.1)"/>
+              </svg>
+              <span class="metric-trend text-emerald">85% Done</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Enterprise Telemetry & Activity Area Chart -->
+      <div class="glass-panel-elevated telemetry-chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="badge badge-indigo" style="margin-bottom: 0.375rem;">Real-Time Data Engine</div>
+            <h2 class="font-heading-3">Enterprise Operational Telemetry</h2>
+            <p class="font-caption">Aggregated throughput across Sales Deals, Invoices, Manufacturing Yield, and Support SLAs</p>
+          </div>
+          <div class="chart-controls">
+            <button class="range-btn" [class.active]="selectedTimeRange === '7D'" (click)="setTimeRange('7D')">7 Days</button>
+            <button class="range-btn" [class.active]="selectedTimeRange === '30D'" (click)="setTimeRange('30D')">30 Days</button>
+            <button class="range-btn" [class.active]="selectedTimeRange === '90D'" (click)="setTimeRange('90D')">90 Days</button>
+          </div>
+        </div>
+
+        <div class="chart-viewport">
+          <svg class="chart-svg" viewBox="0 0 800 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="auroraAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.38"/>
+                <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#111827" stop-opacity="0.0"/>
+              </linearGradient>
+              <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#8b5cf6"/>
+                <stop offset="50%" stop-color="#6366f1"/>
+                <stop offset="100%" stop-color="#06b6d4"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Horizontal Gridlines -->
+            <line x1="0" y1="40" x2="800" y2="40" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4"/>
+            <line x1="0" y1="90" x2="800" y2="90" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4"/>
+            <line x1="0" y1="140" x2="800" y2="140" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4"/>
+            <line x1="0" y1="190" x2="800" y2="190" stroke="rgba(255,255,255,0.08)"/>
+
+            <!-- Area Fill -->
+            <path d="M0,160 Q80,110 160,130 T320,80 T480,95 T640,40 T800,55 L800,190 L0,190 Z" fill="url(#auroraAreaGrad)"/>
+
+            <!-- Trend Curve -->
+            <path d="M0,160 Q80,110 160,130 T320,80 T480,95 T640,40 T800,55" fill="none" stroke="url(#lineGrad)" stroke-width="3" stroke-linecap="round"/>
+
+            <!-- Data Point Circles -->
+            <circle cx="160" cy="130" r="4.5" fill="#ffffff" stroke="#8b5cf6" stroke-width="2.5"/>
+            <circle cx="320" cy="80" r="4.5" fill="#ffffff" stroke="#6366f1" stroke-width="2.5"/>
+            <circle cx="480" cy="95" r="4.5" fill="#ffffff" stroke="#6366f1" stroke-width="2.5"/>
+            <circle cx="640" cy="40" r="5" fill="#ffffff" stroke="#06b6d4" stroke-width="3"/>
+            <circle cx="800" cy="55" r="4.5" fill="#ffffff" stroke="#06b6d4" stroke-width="2.5"/>
+          </svg>
+
+          <!-- Day Labels Axis -->
+          <div class="axis-labels">
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+            <span>Sun (Today)</span>
+          </div>
+        </div>
+
+        <!-- Telemetry Key Metrics Summary -->
+        <div class="telemetry-summary-row">
+          <div class="summary-pill">
+            <span class="pill-title">SALES FORECAST</span>
+            <span class="pill-value text-indigo">$148,500</span>
+          </div>
+          <div class="summary-pill">
+            <span class="pill-title">INVOICES CLEARED</span>
+            <span class="pill-value text-emerald">99.2%</span>
+          </div>
+          <div class="summary-pill">
+            <span class="pill-title">MANUFACTURING YIELD</span>
+            <span class="pill-value text-cyan">98.7%</span>
+          </div>
+          <div class="summary-pill">
+            <span class="pill-title">SUPPORT SLA ADHERENCE</span>
+            <span class="pill-value text-violet">100.0%</span>
+          </div>
         </div>
       </div>
 
@@ -224,6 +352,16 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
                 <span class="q-desc">Forensic chronological event trail, IP tracking, and raw payload inspector</span>
               </div>
               <span class="badge badge-cyan">Admin</span>
+              <span class="q-arrow">→</span>
+            </a>
+
+            <a routerLink="/app/billing" class="quick-nav-item">
+              <div class="q-icon">💳</div>
+              <div class="q-content">
+                <span class="q-title">Plans & Billing Entitlements</span>
+                <span class="q-desc">Subscription tier, compute quotas, payment methods, and historical receipts</span>
+              </div>
+              <span class="badge badge-amber">Pro</span>
               <span class="q-arrow">→</span>
             </a>
 
@@ -363,6 +501,31 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
         }
       }
 
+      .metric-body {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+
+      .sparkline-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.25rem;
+
+        .metric-trend {
+          font-size: 0.6875rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+
+          &.text-cyan { color: $aurora-cyan; }
+          &.text-violet { color: $aurora-violet; }
+          &.text-indigo { color: #818cf8; }
+          &.text-emerald { color: $aurora-emerald; }
+        }
+      }
+
       .metric-num {
         font-size: 2rem;
         font-weight: 700;
@@ -374,6 +537,107 @@ import { TenantDetails, TaskItem, Employee } from '../../core/models/models';
       .metric-sub {
         font-size: 0.75rem;
         color: $text-secondary;
+      }
+    }
+
+    // Telemetry Chart Card
+    .telemetry-chart-card {
+      padding: 1.75rem;
+      border-radius: $radius-lg;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+
+      .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .chart-controls {
+        display: flex;
+        gap: 0.375rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.25rem;
+        border-radius: $radius-md;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+
+        .range-btn {
+          background: transparent;
+          border: none;
+          color: $text-muted;
+          padding: 0.375rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          border-radius: $radius-sm;
+          transition: all $transition-fast;
+
+          &:hover {
+            color: $text-primary;
+          }
+
+          &.active {
+            background: rgba($aurora-indigo, 0.2);
+            color: $aurora-cyan;
+          }
+        }
+      }
+
+      .chart-viewport {
+        position: relative;
+        width: 100%;
+        margin: 0.5rem 0;
+
+        .chart-svg {
+          width: 100%;
+          height: 180px;
+          overflow: visible;
+        }
+
+        .axis-labels {
+          display: flex;
+          justify-content: space-between;
+          padding-top: 0.5rem;
+          font-size: 0.6875rem;
+          color: $text-muted;
+          letter-spacing: 0.04em;
+        }
+      }
+
+      .telemetry-summary-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+        .summary-pill {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+
+          .pill-title {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: $text-muted;
+          }
+
+          .pill-value {
+            font-size: 1.125rem;
+            font-weight: 700;
+            font-family: monospace;
+
+            &.text-indigo { color: #818cf8; }
+            &.text-emerald { color: $aurora-emerald; }
+            &.text-cyan { color: $aurora-cyan; }
+            &.text-violet { color: $aurora-violet; }
+          }
+        }
       }
     }
 
@@ -515,8 +779,13 @@ export class DashboardComponent implements OnInit {
   public activeTenant$ = this.authService.activeTenant$;
   public company: TenantDetails | null = null;
   public tasks: TaskItem[] = [];
+  public selectedTimeRange: '7D' | '30D' | '90D' = '7D';
 
   constructor() {}
+
+  public setTimeRange(range: '7D' | '30D' | '90D'): void {
+    this.selectedTimeRange = range;
+  }
 
   public ngOnInit(): void {
     this.apiService.getCompany().subscribe(res => {

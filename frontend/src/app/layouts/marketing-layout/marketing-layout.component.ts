@@ -28,6 +28,7 @@ import { AuthService } from '../../core/services/auth.service';
             <a href="#features">Platform</a>
             <a href="#architecture">Multi-Tenancy</a>
             <a href="#modules">Modules</a>
+            <a href="#pricing">Pricing</a>
             <a href="#security">Security</a>
           </nav>
 
@@ -135,57 +136,221 @@ import { AuthService } from '../../core/services/auth.service';
       <section id="modules" class="section-container">
         <div class="section-header">
           <div class="badge badge-cyan">Full Suite Coverage</div>
-          <h2 class="font-heading-2">Eight Integrated Business Modules</h2>
-          <p class="font-body">Built as a cohesive modular monolith with shared organizational state.</p>
+          <h2 class="font-heading-2">Ten Integrated Enterprise Modules</h2>
+          <p class="font-body">Built as a cohesive modular monolith with shared organizational state and cryptographic tenant isolation.</p>
         </div>
 
         <div class="modules-grid">
           <div class="glass-panel module-card active-module">
-            <div class="module-status badge badge-emerald">Phase 6 — Implemented</div>
+            <div class="module-status badge badge-emerald">Phase 6 — Live</div>
             <h3 class="font-heading-3">Tasks & Projects</h3>
             <p class="font-body">Scoped work items with confirmed visibility rules (Employee own tasks, Manager direct reports, Admin company-wide).</p>
           </div>
 
           <div class="glass-panel module-card active-module">
-            <div class="module-status badge badge-emerald">Phase 5 — Implemented</div>
+            <div class="module-status badge badge-emerald">Phase 5 — Live</div>
             <h3 class="font-heading-3">Organization & Employees</h3>
             <p class="font-body">Hierarchical branch and department governance with self-referential reporting chains and role assignments.</p>
           </div>
 
-          <div class="glass-panel module-card">
-            <div class="module-status badge badge-indigo">Specification Defined</div>
-            <h3 class="font-heading-3">CRM & Sales</h3>
-            <p class="font-body">Account ownership, pipeline governance, deal status transitions, and customer records.</p>
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 7 — Live</div>
+            <h3 class="font-heading-3">CRM & Sales Pipelines</h3>
+            <p class="font-body">6-stage sales funnels, win-loss probabilities, deal value forecasting, and customer relationship governance.</p>
           </div>
 
-          <div class="glass-panel module-card">
-            <div class="module-status badge badge-indigo">Specification Defined</div>
-            <h3 class="font-heading-3">Customer Support</h3>
-            <p class="font-body">Service desk ticketing, incident tracking, internal notes, and SLA response tracking.</p>
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 8 — Live</div>
+            <h3 class="font-heading-3">Customer Support Desk</h3>
+            <p class="font-body">Service desk ticketing (TCK-1001), automated SLA response monitoring, priority matrix, and discussion threads.</p>
           </div>
 
-          <div class="glass-panel module-card">
-            <div class="module-status badge badge-indigo">Specification Defined</div>
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 9 — Live</div>
             <h3 class="font-heading-3">Inventory & Procurement</h3>
-            <p class="font-body">Warehouse stock movements, supplier catalogs, purchasing requests, and reorder levels.</p>
+            <p class="font-body">Multi-location warehouse stock movements, immutable double-entry ledger, supplier catalogs, and reorder levels.</p>
           </div>
 
-          <div class="glass-panel module-card">
-            <div class="module-status badge badge-indigo">Specification Defined</div>
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 10 — Live</div>
             <h3 class="font-heading-3">Manufacturing & Production</h3>
-            <p class="font-body">Work centers, bills of materials (BOM), production runs, and material consumption auditing.</p>
+            <p class="font-body">Work centers, multi-component bills of materials (BOM), production runs, and material consumption yields.</p>
           </div>
 
-          <div class="glass-panel module-card">
-            <div class="module-status badge badge-indigo">Specification Defined</div>
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 11 — Live</div>
             <h3 class="font-heading-3">HR & Attendance</h3>
-            <p class="font-body">Shift tracking, leave requests, employee records, and organizational reporting.</p>
+            <p class="font-body">Self-service digital time clock, supervisory leave request workflows, shift rotas, and departmental reporting.</p>
           </div>
 
-          <div class="glass-panel module-card">
-            <div class="module-status badge badge-indigo">Specification Defined</div>
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 12 — Live</div>
             <h3 class="font-heading-3">Invoicing & Accounting</h3>
-            <p class="font-body">High-integrity ledger controls, invoice posting, payment tracking, and audit trails.</p>
+            <p class="font-body">High-integrity ledger controls, invoice posting (INV-YYYY-XXXX), tax calculation rules, and payment receipts.</p>
+          </div>
+
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 13 — Live</div>
+            <h3 class="font-heading-3">Reports & Analytics</h3>
+            <p class="font-body">Cross-domain telemetry dashboards, operational KPI charts, and on-demand CSV & JSON file exports.</p>
+          </div>
+
+          <div class="glass-panel module-card active-module">
+            <div class="module-status badge badge-emerald">Phase 14 — Live</div>
+            <h3 class="font-heading-3">Audit Trail & Security</h3>
+            <p class="font-body">Forensic chronological event ledger, client IP and user agent tracking, and raw payload inspection.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pricing & Subscription Plans Section -->
+      <section id="pricing" class="section-container">
+        <div class="section-header">
+          <div class="badge badge-amber">Predictable Enterprise Value</div>
+          <h2 class="font-heading-2">Transparent Pricing Built for Hyper-Growth</h2>
+          <p class="font-body">No hidden fees, no per-module add-ons. Full suite features with instant provisioning.</p>
+
+          <div class="pricing-toggle-wrap">
+            <span class="cycle-text" [class.active-cycle]="!annualBilling">Monthly Billing</span>
+            <button class="pricing-switch" (click)="toggleBilling()" [class.annual-on]="annualBilling">
+              <span class="switch-knob"></span>
+            </button>
+            <span class="cycle-text" [class.active-cycle]="annualBilling">
+              Annual Billing <span class="badge badge-emerald save-chip">Save 20%</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="pricing-cards-grid">
+          <!-- Starter Tier -->
+          <div class="glass-panel pricing-tier-card">
+            <div class="tier-top">
+              <span class="tier-name font-heading-3">Starter</span>
+              <p class="tier-desc font-caption">Foundational organizational governance for agile teams</p>
+            </div>
+
+            <div class="tier-price-box">
+              <span class="curr font-mono">$</span>
+              <span class="val font-mono">{{ annualBilling ? 24 : 29 }}</span>
+              <span class="term font-caption">/ mo</span>
+            </div>
+            <div class="bill-note font-caption" *ngIf="annualBilling">Billed $288 annually</div>
+
+            <div class="features-checklist">
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Up to 5 authenticated team seats</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Tasks & Kanban project board</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Decoupled Employee Directory</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>10 GB Encrypted Blob Storage</span>
+              </div>
+            </div>
+
+            <button (click)="launchQuickDemo('Employee')" class="btn-secondary w-full">
+              <span>Start Free Starter Demo</span>
+            </button>
+          </div>
+
+          <!-- Professional Tier -->
+          <div class="glass-panel pricing-tier-card featured-pricing-card">
+            <div class="popular-ribbon">MOST POPULAR</div>
+            <div class="tier-top">
+              <span class="tier-name font-heading-3">Professional</span>
+              <p class="tier-desc font-caption">Full-spectrum business suite with multi-facility support</p>
+            </div>
+
+            <div class="tier-price-box">
+              <span class="curr font-mono">$</span>
+              <span class="val font-mono">{{ annualBilling ? 79 : 99 }}</span>
+              <span class="term font-caption">/ mo</span>
+            </div>
+            <div class="bill-note font-caption" *ngIf="annualBilling">Billed $948 annually</div>
+
+            <div class="features-checklist">
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Up to 15 authenticated team seats</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>CRM & 6-Stage Deal Pipelines</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Customer Support Ticketing & SLAs</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Multi-Branch Inventory & Ledger</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Invoicing & Accounting Statements</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>50 GB Encrypted Storage</span>
+              </div>
+            </div>
+
+            <button (click)="launchQuickDemo('Manager')" class="btn-primary w-full">
+              <span>Launch Professional Demo</span>
+            </button>
+          </div>
+
+          <!-- Enterprise Tier -->
+          <div class="glass-panel pricing-tier-card">
+            <div class="tier-top">
+              <span class="tier-name font-heading-3">Enterprise Scale</span>
+              <p class="tier-desc font-caption">Maximum security, manufacturing runs, and forensic audit</p>
+            </div>
+
+            <div class="tier-price-box">
+              <span class="curr font-mono">$</span>
+              <span class="val font-mono">{{ annualBilling ? 199 : 249 }}</span>
+              <span class="term font-caption">/ mo</span>
+            </div>
+            <div class="bill-note font-caption" *ngIf="annualBilling">Billed $2,388 annually</div>
+
+            <div class="features-checklist">
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Up to 50 authenticated team seats</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Manufacturing & BOM Recipes</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Digital Time Clock & Leave Approvals</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Executive Telemetry & Exporter</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Forensic Security Audit Ledger</span>
+              </div>
+              <div class="feature-row">
+                <svg class="check-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>250 GB Encrypted Storage + 99.99% SLA</span>
+              </div>
+            </div>
+
+            <button (click)="launchQuickDemo('Owner')" class="btn-primary w-full">
+              <span>Launch Enterprise Demo</span>
+            </button>
           </div>
         </div>
       </section>
@@ -548,6 +713,178 @@ import { AuthService } from '../../core/services/auth.service';
       }
     }
 
+    // Pricing Section
+    .pricing-toggle-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.875rem;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.5rem 1.25rem;
+      border-radius: $radius-full;
+      margin-top: 1.5rem;
+
+      .cycle-text {
+        font-size: 0.875rem;
+        color: $text-muted;
+        transition: color $transition-fast;
+
+        &.active-cycle {
+          color: $text-primary;
+          font-weight: 600;
+        }
+      }
+
+      .save-chip {
+        font-size: 0.6875rem;
+        margin-left: 0.375rem;
+      }
+
+      .pricing-switch {
+        width: 44px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.15);
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        position: relative;
+        transition: background $transition-fast;
+
+        &.annual-on {
+          background: $aurora-emerald;
+
+          .switch-knob {
+            transform: translateX(20px);
+          }
+        }
+
+        .switch-knob {
+          display: block;
+          width: 18px;
+          height: 18px;
+          background: #ffffff;
+          border-radius: 50%;
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          transition: transform $transition-fast;
+        }
+      }
+    }
+
+    .pricing-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .pricing-tier-card {
+      padding: 2.25rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: $radius-lg;
+      transition: all $transition-fast;
+
+      &:hover {
+        transform: translateY(-4px);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &.featured-pricing-card {
+        border-color: rgba($aurora-indigo, 0.7);
+        box-shadow: 0 10px 40px rgba($aurora-indigo, 0.2);
+        background: linear-gradient(180deg, rgba($aurora-indigo, 0.08) 0%, rgba(13, 19, 33, 0.8) 100%);
+      }
+
+      .popular-ribbon {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(90deg, $aurora-indigo, $aurora-violet);
+        color: #ffffff;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        padding: 0.25rem 0.875rem;
+        border-radius: $radius-full;
+        box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+      }
+
+      .tier-top {
+        margin-bottom: 1.25rem;
+
+        .tier-name {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: $text-primary;
+          margin-bottom: 0.375rem;
+        }
+
+        .tier-desc {
+          color: $text-secondary;
+          line-height: 1.4;
+        }
+      }
+
+      .tier-price-box {
+        display: flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        margin-bottom: 0.25rem;
+
+        .curr {
+          font-size: 1.5rem;
+          color: $text-secondary;
+        }
+
+        .val {
+          font-size: 2.75rem;
+          font-weight: 800;
+          color: #ffffff;
+          line-height: 1;
+        }
+
+        .term {
+          font-size: 0.875rem;
+          color: $text-muted;
+        }
+      }
+
+      .bill-note {
+        color: $aurora-emerald;
+        margin-bottom: 1.25rem;
+      }
+
+      .features-checklist {
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+        margin: 1.5rem 0 2rem 0;
+        flex-grow: 1;
+
+        .feature-row {
+          display: flex;
+          align-items: center;
+          gap: 0.625rem;
+          font-size: 0.875rem;
+          color: $text-secondary;
+
+          .check-svg {
+            color: $aurora-emerald;
+            flex-shrink: 0;
+          }
+        }
+      }
+    }
+
+    .w-full {
+      width: 100%;
+    }
+
     // Footer
     .marketing-footer {
       border-top: 1px solid $border-glass;
@@ -589,7 +926,13 @@ import { AuthService } from '../../core/services/auth.service';
   `]
 })
 export class MarketingLayoutComponent {
+  public annualBilling = true;
+
   constructor(private authService: AuthService, private router: Router) {}
+
+  public toggleBilling(): void {
+    this.annualBilling = !this.annualBilling;
+  }
 
   public launchQuickDemo(role: 'Owner' | 'Manager' | 'Employee'): void {
     this.authService.loginAsDemoRole(role);

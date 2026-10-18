@@ -143,6 +143,12 @@ export interface CommandPaletteItem {
             <span>Workspace Settings</span>
             <span class="nav-tag badge-violet">Config</span>
           </a>
+
+          <a routerLink="/app/billing" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span>Plans & Billing</span>
+            <span class="nav-tag badge-amber">Pro</span>
+          </a>
         </nav>
       </aside>
 
@@ -1048,6 +1054,7 @@ export class WorkspaceLayoutComponent {
       { id: 'nav-rep', category: 'Navigation', title: 'Reports & Dashboards', subtitle: 'Executive cross-module reporting and CSV exports', icon: '📈', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/reports']) },
       { id: 'nav-aud', category: 'Navigation', title: 'Audit Trail', subtitle: 'Immutable compliance logging and record changes', icon: '🛡️', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/audit']) },
       { id: 'nav-set', category: 'Navigation', title: 'Workspace Settings', subtitle: 'Tenant parameters, password, team access, and API keys', icon: '⚙️', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/settings']) },
+      { id: 'nav-billing', category: 'Navigation', title: 'Plans & Billing Management', subtitle: 'Subscription tier, quotas, invoices, and payment vault', icon: '💳', badgeClass: 'badge-amber', action: () => this.router.navigate(['/app/billing']) },
 
       // Quick Actions
       { id: 'act-task', category: 'Action', title: 'Create Work Item', subtitle: 'Create a new task on the Kanban board', icon: '+', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/tasks']) },

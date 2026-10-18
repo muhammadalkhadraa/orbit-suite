@@ -172,4 +172,10 @@ describe('WorkspaceLayoutComponent', () => {
     component.onPaletteKeydown(enterKey);
     expect(selectedItem.action).toHaveBeenCalled();
   });
+
+  it('should include billing navigation in command palette items', () => {
+    const billingItem = component.paletteItems.find(i => i.id === 'nav-billing');
+    expect(billingItem).toBeDefined();
+    expect(billingItem?.title).toContain('Billing');
+  });
 });

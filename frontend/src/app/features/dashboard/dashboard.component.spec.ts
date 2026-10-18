@@ -28,10 +28,27 @@ describe('DashboardComponent', () => {
     expect(compiled.querySelector('.security-title')?.textContent).toContain('ACTIVE TENANT SECURITY ENFORCEMENT');
   });
 
-  it('should render platform operations quick navigation items', () => {
+  it('should render platform operations quick navigation items including billing', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const navItems = compiled.querySelectorAll('.quick-nav-item');
-    expect(navItems.length).toBeGreaterThanOrEqual(8);
+    expect(navItems.length).toBeGreaterThanOrEqual(10);
+    const hasBilling = Array.from(navItems).some(item => item.textContent?.includes('Billing'));
+    expect(hasBilling).toBeTrue();
+  });
+
+  it('should update telemetry time range', () => {
+    expect(component.selectedTimeRange).toBe('7D');
+    component.setTimeRange('30D');
+    expect(component.selectedTimeRange).toBe('30D');
+    component.setTimeRange('90D');
+    expect(component.selectedTimeRange).toBe('90D');
+  });
+
+  it('should render SVG sparklines and telemetry chart elements', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelectorAll('.sparkline-wrap').length).toBe(4);
+    expect(compiled.querySelector('.telemetry-chart-card')).toBeTruthy();
+    expect(compiled.querySelector('.chart-svg')).toBeTruthy();
   });
 
   it('should return appropriate badge class per role', () => {
