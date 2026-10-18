@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { TenantRole } from '../../core/models/models';
 
 @Component({
@@ -125,6 +126,12 @@ import { TenantRole } from '../../core/models/models';
             <span>Audit Trail</span>
             <span class="nav-tag badge-cyan">Admin</span>
           </a>
+
+          <a routerLink="/app/settings" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Workspace Settings</span>
+            <span class="nav-tag badge-violet">Config</span>
+          </a>
         </nav>
       </aside>
 
@@ -173,6 +180,23 @@ import { TenantRole } from '../../core/models/models';
         <main class="workspace-content">
           <router-outlet></router-outlet>
         </main>
+
+        <!-- Floating Reactive Toast Notifications -->
+        <div class="toast-overlay" *ngIf="toasts$ | async as toasts">
+          <div *ngFor="let toast of toasts" class="toast-item glass-panel-elevated" [ngClass]="'toast-' + toast.type">
+            <div class="toast-icon-box">
+              <span *ngIf="toast.type === 'success'">✓</span>
+              <span *ngIf="toast.type === 'error'">✕</span>
+              <span *ngIf="toast.type === 'warning'">⚠️</span>
+              <span *ngIf="toast.type === 'info'">ℹ️</span>
+            </div>
+            <div class="toast-info">
+              <div class="toast-title-text">{{ toast.title }}</div>
+              <div class="toast-message-text" *ngIf="toast.message">{{ toast.message }}</div>
+            </div>
+            <button class="toast-close-btn" (click)="dismissToast(toast.id)">×</button>
+          </div>
+        </div>
       </div>
     </div>
   `,
@@ -554,16 +578,112 @@ import { TenantRole } from '../../core/models/models';
         padding: 1rem;
       }
     }
+
+    // Floating Toasts
+    .toast-overlay {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-width: 380px;
+      pointer-events: none;
+    }
+
+    .toast-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      border-radius: $radius-md;
+      pointer-events: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      animation: toastSlideIn $transition-normal cubic-bezier(0.16, 1, 0.3, 1);
+
+      &.toast-success {
+        border-color: rgba(16, 185, 129, 0.4);
+        .toast-icon-box { color: #6ee7b7; background: rgba(16, 185, 129, 0.15); }
+      }
+
+      &.toast-error {
+        border-color: rgba(244, 63, 94, 0.4);
+        .toast-icon-box { color: #fda4af; background: rgba(244, 63, 94, 0.15); }
+      }
+
+      &.toast-warning {
+        border-color: rgba(245, 158, 11, 0.4);
+        .toast-icon-box { color: #fcd34d; background: rgba(245, 158, 11, 0.15); }
+      }
+
+      &.toast-info {
+        border-color: rgba(6, 182, 212, 0.4);
+        .toast-icon-box { color: #67e8f9; background: rgba(6, 182, 212, 0.15); }
+      }
+    }
+
+    @keyframes toastSlideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast-icon-box {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .toast-info {
+      flex: 1;
+      min-width: 0;
+
+      .toast-title-text {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #ffffff;
+        line-height: 1.25;
+      }
+
+      .toast-message-text {
+        font-size: 0.75rem;
+        color: $text-secondary;
+        margin-top: 0.125rem;
+        line-height: 1.35;
+      }
+    }
+
+    .toast-close-btn {
+      background: none;
+      border: none;
+      color: $text-muted;
+      font-size: 1.125rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+
+      &:hover {
+        color: #ffffff;
+      }
+    }
   `]
 })
 export class WorkspaceLayoutComponent {
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
   private router = inject(Router);
 
   public mobileSidebarOpen = false;
   public currentUser$ = this.authService.currentUser$;
   public activeTenant$ = this.authService.activeTenant$;
   public availableTenants$ = this.authService.availableTenants$;
+  public toasts$ = this.toastService.toasts$;
 
   constructor() {}
 
@@ -609,5 +729,9 @@ export class WorkspaceLayoutComponent {
       case 'Employee': return 'badge-emerald';
       default: return 'badge-indigo';
     }
+  }
+
+  public dismissToast(id: string): void {
+    this.toastService.remove(id);
   }
 }

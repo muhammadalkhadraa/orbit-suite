@@ -83,4 +83,11 @@ describe('WorkspaceLayoutComponent', () => {
     expect(authService.logout).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
   });
+
+  it('should dismiss toast notification when invoked', () => {
+    const toastService = (component as any).toastService;
+    spyOn(toastService, 'remove');
+    component.dismissToast('toast-123');
+    expect(toastService.remove).toHaveBeenCalledWith('toast-123');
+  });
 });
