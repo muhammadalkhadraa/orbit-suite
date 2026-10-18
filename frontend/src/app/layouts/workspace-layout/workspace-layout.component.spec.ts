@@ -178,4 +178,75 @@ describe('WorkspaceLayoutComponent', () => {
     expect(billingItem).toBeDefined();
     expect(billingItem?.title).toContain('Billing');
   });
+
+  it('should toggle and manage notifications feed', () => {
+    expect(component.notificationsOpen).toBeFalse();
+    expect(component.unreadNotificationCount).toBe(3);
+
+    component.toggleNotifications();
+    expect(component.notificationsOpen).toBeTrue();
+
+    // Filter unread
+    component.notifFilter = 'unread';
+    expect(component.filteredNotifications.length).toBe(3);
+
+    // Filter all
+    component.notifFilter = 'all';
+    expect(component.filteredNotifications.length).toBe(4);
+
+    // Mark all as read
+    component.markAllNotificationsRead();
+    expect(component.unreadNotificationCount).toBe(0);
+
+    // Click a notification
+    const item = component.notifications[0];
+    component.handleNotificationClick(item);
+    expect(component.notificationsOpen).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledWith(['/app/tasks']);
+
+    // Clear notifications
+    component.clearAllNotifications();
+    expect(component.notifications.length).toBe(0);
+  });
+
+  it('should toggle and manage keyboard shortcuts modal', () => {
+    expect(component.shortcutsModalOpen).toBeFalse();
+
+    component.toggleShortcutsModal();
+    expect(component.shortcutsModalOpen).toBeTrue();
+
+    component.jumpToRoute('/app/finance');
+    expect(component.shortcutsModalOpen).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledWith(['/app/finance']);
+
+    component.toggleShortcutsModal();
+    expect(component.shortcutsModalOpen).toBeTrue();
+    component.closeShortcutsModal();
+    expect(component.shortcutsModalOpen).toBeFalse();
+  });
+
+  it('should handle ? shortcut to toggle shortcuts modal and sequential G hotkeys', () => {
+    // '?' key opens shortcuts modal
+    const qEvent = new KeyboardEvent('keydown', { key: '?' });
+    spyOn(qEvent, 'preventDefault');
+    component.handleGlobalKeydown(qEvent);
+    expect(qEvent.preventDefault).toHaveBeenCalled();
+    expect(component.shortcutsModalOpen).toBeTrue();
+
+    // Escape closes shortcuts modal
+    const escEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+    component.handleGlobalKeydown(escEvent);
+    expect(component.shortcutsModalOpen).toBeFalse();
+
+    // Sequential 'g' then 't' navigates to tasks
+    const gEvent = new KeyboardEvent('keydown', { key: 'g' });
+    component.handleGlobalKeydown(gEvent);
+    expect(component.lastKeyGTime).toBeGreaterThan(0);
+
+    const tEvent = new KeyboardEvent('keydown', { key: 't' });
+    spyOn(tEvent, 'preventDefault');
+    component.handleGlobalKeydown(tEvent);
+    expect(tEvent.preventDefault).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/app/tasks']);
+  });
 });

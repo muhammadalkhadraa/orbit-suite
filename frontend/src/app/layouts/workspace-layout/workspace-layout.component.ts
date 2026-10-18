@@ -16,6 +16,18 @@ export interface CommandPaletteItem {
   action: () => void;
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  icon: string;
+  iconClass: string;
+  read: boolean;
+  category: 'task' | 'support' | 'billing' | 'manufacturing' | 'security';
+  route?: string;
+}
+
 @Component({
   selector: 'app-workspace-layout',
   standalone: true,
@@ -184,6 +196,64 @@ export interface CommandPaletteItem {
               </select>
             </div>
 
+            <!-- Keyboard Shortcuts Button -->
+            <button class="header-icon-btn" (click)="toggleShortcutsModal()" title="Keyboard Shortcuts (?)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
+
+            <!-- Notifications Center Wrapper -->
+            <div class="notifications-wrapper">
+              <button class="header-icon-btn" (click)="toggleNotifications()" title="Notifications Feed">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span class="notification-badge" *ngIf="unreadNotificationCount > 0">{{ unreadNotificationCount }}</span>
+              </button>
+
+              <!-- Notifications Popover -->
+              <div class="notifications-popover glass-panel-elevated" *ngIf="notificationsOpen" (click)="$event.stopPropagation()">
+                <div class="notif-header">
+                  <div class="notif-header-title">
+                    <span class="notif-title-text font-heading-3">Activity Feed</span>
+                    <span class="badge badge-rose" *ngIf="unreadNotificationCount > 0">{{ unreadNotificationCount }} New</span>
+                  </div>
+                  <div class="notif-actions">
+                    <button class="btn-ghost btn-xs" (click)="markAllNotificationsRead()" [disabled]="unreadNotificationCount === 0">Mark read</button>
+                    <button class="btn-ghost btn-xs text-muted" (click)="clearAllNotifications()">Clear</button>
+                  </div>
+                </div>
+
+                <div class="notif-tabs">
+                  <button class="notif-tab" [class.active]="notifFilter === 'all'" (click)="notifFilter = 'all'">All ({{ notifications.length }})</button>
+                  <button class="notif-tab" [class.active]="notifFilter === 'unread'" (click)="notifFilter = 'unread'">Unread ({{ unreadNotificationCount }})</button>
+                </div>
+
+                <div class="notif-list">
+                  <div 
+                    *ngFor="let n of filteredNotifications" 
+                    class="notif-item" 
+                    [class.unread]="!n.read"
+                    (click)="handleNotificationClick(n)"
+                  >
+                    <div class="notif-icon-col">
+                      <div class="notif-icon" [ngClass]="n.iconClass">{{ n.icon }}</div>
+                    </div>
+                    <div class="notif-content-col">
+                      <div class="notif-item-top">
+                        <span class="notif-title">{{ n.title }}</span>
+                        <span class="notif-time">{{ n.timestamp }}</span>
+                      </div>
+                      <p class="notif-message">{{ n.message }}</p>
+                    </div>
+                    <div class="notif-unread-dot" *ngIf="!n.read"></div>
+                  </div>
+
+                  <div class="notif-empty" *ngIf="filteredNotifications.length === 0">
+                    <span class="notif-empty-icon">🔔</span>
+                    <span class="notif-empty-text">No notifications to display</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- User Menu -->
             <div class="user-profile-menu">
               <div class="user-avatar">
@@ -248,6 +318,87 @@ export interface CommandPaletteItem {
               <span><kbd>↑</kbd> <kbd>↓</kbd> Navigate</span>
               <span><kbd>↵</kbd> Select</span>
               <span><kbd>esc</kbd> Close</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Keyboard Shortcuts Cheatsheet Modal Overlay -->
+        <div *ngIf="shortcutsModalOpen" class="shortcuts-backdrop" (click)="closeShortcutsModal()">
+          <div class="shortcuts-modal glass-panel-elevated" (click)="$event.stopPropagation()">
+            <div class="shortcuts-header">
+              <div class="shortcuts-title-wrap">
+                <div class="badge badge-indigo" style="margin-bottom: 0.25rem;">Quick Navigation & Hotkeys</div>
+                <h2 class="font-heading-3">Keyboard Shortcuts Cheatsheet</h2>
+              </div>
+              <button class="close-btn" (click)="closeShortcutsModal()">✕</button>
+            </div>
+
+            <div class="shortcuts-body">
+              <div class="shortcuts-category">
+                <span class="category-heading">GLOBAL CONTROLS</span>
+                <div class="shortcut-row">
+                  <span class="shortcut-desc">Open Command Palette</span>
+                  <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>K</kbd></div>
+                </div>
+                <div class="shortcut-row">
+                  <span class="shortcut-desc">Open Keyboard Shortcuts</span>
+                  <div class="shortcut-keys"><kbd>?</kbd></div>
+                </div>
+                <div class="shortcut-row">
+                  <span class="shortcut-desc">Close Open Drawer / Modal</span>
+                  <div class="shortcut-keys"><kbd>Esc</kbd></div>
+                </div>
+              </div>
+
+              <div class="shortcuts-category">
+                <span class="category-heading">SEQUENTIAL JUMPS (PRESS 'G' THEN KEY)</span>
+                <div class="shortcut-grid">
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/dashboard')">
+                    <span class="shortcut-desc">Dashboard</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>D</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/tasks')">
+                    <span class="shortcut-desc">Tasks & Kanban</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>T</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/employees')">
+                    <span class="shortcut-desc">Employees</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>E</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/crm')">
+                    <span class="shortcut-desc">CRM & Sales</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>C</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/support')">
+                    <span class="shortcut-desc">Support Desk</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>S</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/inventory')">
+                    <span class="shortcut-desc">Inventory</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>I</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/manufacturing')">
+                    <span class="shortcut-desc">Manufacturing</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>M</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/hr')">
+                    <span class="shortcut-desc">HR Attendance</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>H</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/finance')">
+                    <span class="shortcut-desc">Finance</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>F</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/billing')">
+                    <span class="shortcut-desc">Plans & Billing</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>B</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/audit')">
+                    <span class="shortcut-desc">Audit Ledger</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>A</kbd></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -620,6 +771,340 @@ export interface CommandPaletteItem {
       }
     }
 
+    .header-icon-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid $border-glass;
+      padding: 0.45rem;
+      border-radius: $radius-md;
+      color: $text-secondary;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: $border-glass-hover;
+        color: #ffffff;
+      }
+    }
+
+    .notifications-wrapper {
+      position: relative;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: $radius-full;
+      background: $aurora-rose;
+      color: #ffffff;
+      font-size: 0.625rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 8px rgba(244, 63, 94, 0.6);
+    }
+
+    .notifications-popover {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 360px;
+      max-height: 480px;
+      border-radius: $radius-lg;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      animation: notifDrop 0.2s ease-out;
+      overflow: hidden;
+
+      @include responsive-sm {
+        position: fixed;
+        top: 60px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+      }
+    }
+
+    @keyframes notifDrop {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+      .notif-header-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .notif-title-text {
+          font-size: 0.9375rem;
+          font-weight: 700;
+          color: #ffffff;
+        }
+      }
+
+      .notif-actions {
+        display: flex;
+        gap: 0.25rem;
+      }
+    }
+
+    .notif-tabs {
+      display: flex;
+      padding: 0.5rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+
+      .notif-tab {
+        background: transparent;
+        border: none;
+        color: $text-muted;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        border-radius: $radius-sm;
+        transition: all $transition-fast;
+
+        &:hover {
+          color: $text-primary;
+        }
+
+        &.active {
+          color: $aurora-cyan;
+          background: rgba($aurora-cyan, 0.1);
+        }
+      }
+    }
+
+    .notif-list {
+      max-height: 360px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .notif-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.875rem;
+      padding: 0.875rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      position: relative;
+      transition: background $transition-fast;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      &.unread {
+        background: rgba($aurora-indigo, 0.06);
+
+        &:hover {
+          background: rgba($aurora-indigo, 0.1);
+        }
+      }
+
+      .notif-icon-col {
+        .notif-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.875rem;
+
+          &.icon-emerald { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+          &.icon-cyan { background: rgba(6, 182, 212, 0.15); color: #67e8f9; }
+          &.icon-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+          &.icon-indigo { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+        }
+      }
+
+      .notif-content-col {
+        flex: 1;
+        min-width: 0;
+
+        .notif-item-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: 0.5rem;
+
+          .notif-title {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: $text-primary;
+          }
+
+          .notif-time {
+            font-size: 0.6875rem;
+            color: $text-muted;
+            white-space: nowrap;
+          }
+        }
+
+        .notif-message {
+          font-size: 0.75rem;
+          color: $text-secondary;
+          margin-top: 0.25rem;
+          line-height: 1.35;
+        }
+      }
+
+      .notif-unread-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: $aurora-rose;
+        position: absolute;
+        top: 1rem;
+        right: 0.875rem;
+      }
+    }
+
+    .notif-empty {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      color: $text-muted;
+
+      .notif-empty-icon {
+        font-size: 1.5rem;
+      }
+
+      .notif-empty-text {
+        font-size: 0.8125rem;
+      }
+    }
+
+    // Shortcuts Cheatsheet Modal
+    .shortcuts-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1.5rem;
+    }
+
+    .shortcuts-modal {
+      width: 100%;
+      max-width: 620px;
+      border-radius: $radius-lg;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.2);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: palettePop 0.2s ease-out;
+
+      .shortcuts-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+
+        .close-btn {
+          background: transparent;
+          border: none;
+          color: $text-muted;
+          font-size: 1.25rem;
+          cursor: pointer;
+
+          &:hover { color: #ffffff; }
+        }
+      }
+
+      .shortcuts-body {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .shortcuts-category {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+
+        .category-heading {
+          font-size: 0.6875rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: $text-muted;
+        }
+
+        .shortcut-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 0.5rem;
+        }
+
+        .shortcut-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0.75rem;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: $radius-sm;
+
+          &.click-nav {
+            cursor: pointer;
+            transition: all $transition-fast;
+
+            &:hover {
+              background: rgba(255, 255, 255, 0.06);
+              border-color: rgba($aurora-cyan, 0.3);
+            }
+          }
+
+          .shortcut-desc {
+            font-size: 0.8125rem;
+            color: $text-secondary;
+          }
+
+          .shortcut-keys {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+          }
+        }
+      }
+    }
+
+    .btn-xs {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.6875rem;
+    }
+
     .btn-logout {
       background: none;
       border: 1px solid transparent;
@@ -963,18 +1448,179 @@ export class WorkspaceLayoutComponent {
   public paletteItems: CommandPaletteItem[] = [];
   public filteredPaletteItems: CommandPaletteItem[] = [];
 
+  // Notifications State
+  public notificationsOpen = false;
+  public notifFilter: 'all' | 'unread' = 'all';
+  public notifications: AppNotification[] = [
+    {
+      id: 'notif-1',
+      title: 'High Priority Work Item',
+      message: 'Inventory Reorder Threshold Sync was assigned to you.',
+      timestamp: '10m ago',
+      icon: '✓',
+      iconClass: 'icon-emerald',
+      read: false,
+      category: 'task',
+      route: '/app/tasks'
+    },
+    {
+      id: 'notif-2',
+      title: 'Customer Ticket Activity',
+      message: 'TCK-1004: Production Line Sensor Failure received customer feedback.',
+      timestamp: '32m ago',
+      icon: '💬',
+      iconClass: 'icon-cyan',
+      read: false,
+      category: 'support',
+      route: '/app/support'
+    },
+    {
+      id: 'notif-3',
+      title: 'Monthly Statement Generated',
+      message: 'Tax invoice INV-2026-1003 for $199.00 processed successfully.',
+      timestamp: '2h ago',
+      icon: '💳',
+      iconClass: 'icon-amber',
+      read: false,
+      category: 'billing',
+      route: '/app/billing'
+    },
+    {
+      id: 'notif-4',
+      title: 'Manufacturing Run Yield Verified',
+      message: 'Work order WO-2026-004 completed with 100% BOM yield.',
+      timestamp: 'Yesterday',
+      icon: '⚙️',
+      iconClass: 'icon-indigo',
+      read: true,
+      category: 'manufacturing',
+      route: '/app/manufacturing'
+    }
+  ];
+
+  public get unreadNotificationCount(): number {
+    return this.notifications.filter(n => !n.read).length;
+  }
+
+  public get filteredNotifications(): AppNotification[] {
+    if (this.notifFilter === 'unread') {
+      return this.notifications.filter(n => !n.read);
+    }
+    return this.notifications;
+  }
+
+  // Keyboard Shortcuts Modal State
+  public shortcutsModalOpen = false;
+  public lastKeyGTime = 0;
+
   constructor() {
     this.initializePaletteItems();
   }
 
   @HostListener('window:keydown', ['$event'])
   public handleGlobalKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+
+    // Ctrl+K or Cmd+K: Open Command Palette
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       this.toggleCommandPalette();
-    } else if (event.key === 'Escape' && this.commandPaletteOpen) {
+      return;
+    }
+
+    // Escape: Dismiss active drawers/modals
+    if (event.key === 'Escape') {
+      if (this.commandPaletteOpen) {
+        this.closeCommandPalette();
+      } else if (this.shortcutsModalOpen) {
+        this.closeShortcutsModal();
+      } else if (this.notificationsOpen) {
+        this.closeNotifications();
+      }
+      return;
+    }
+
+    // Do not trigger single-key hotkeys when typing in forms
+    if (isInput) return;
+
+    // '?' Hotkey: Open Shortcuts Cheatsheet
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      this.toggleShortcutsModal();
+      return;
+    }
+
+    // Sequential Navigation: 'G' then target key
+    const now = Date.now();
+    if (event.key.toLowerCase() === 'g') {
+      this.lastKeyGTime = now;
+      return;
+    }
+
+    if (now - this.lastKeyGTime < 1000) {
+      const k = event.key.toLowerCase();
+      this.lastKeyGTime = 0;
+      switch (k) {
+        case 'd': event.preventDefault(); this.jumpToRoute('/app/dashboard'); break;
+        case 't': event.preventDefault(); this.jumpToRoute('/app/tasks'); break;
+        case 'e': event.preventDefault(); this.jumpToRoute('/app/employees'); break;
+        case 'c': event.preventDefault(); this.jumpToRoute('/app/crm'); break;
+        case 's': event.preventDefault(); this.jumpToRoute('/app/support'); break;
+        case 'i': event.preventDefault(); this.jumpToRoute('/app/inventory'); break;
+        case 'm': event.preventDefault(); this.jumpToRoute('/app/manufacturing'); break;
+        case 'h': event.preventDefault(); this.jumpToRoute('/app/hr'); break;
+        case 'f': event.preventDefault(); this.jumpToRoute('/app/finance'); break;
+        case 'b': event.preventDefault(); this.jumpToRoute('/app/billing'); break;
+        case 'a': event.preventDefault(); this.jumpToRoute('/app/audit'); break;
+      }
+    }
+  }
+
+  public toggleNotifications(): void {
+    this.notificationsOpen = !this.notificationsOpen;
+    if (this.notificationsOpen) {
+      this.shortcutsModalOpen = false;
+    }
+  }
+
+  public closeNotifications(): void {
+    this.notificationsOpen = false;
+  }
+
+  public markAllNotificationsRead(): void {
+    this.notifications.forEach(n => n.read = true);
+    this.toastService.info('All notifications marked as read.');
+  }
+
+  public clearAllNotifications(): void {
+    this.notifications = [];
+    this.toastService.info('Notification history cleared.');
+  }
+
+  public handleNotificationClick(n: AppNotification): void {
+    n.read = true;
+    this.closeNotifications();
+    if (n.route) {
+      this.router.navigate([n.route]);
+    }
+  }
+
+  public toggleShortcutsModal(): void {
+    this.shortcutsModalOpen = !this.shortcutsModalOpen;
+    if (this.shortcutsModalOpen) {
+      this.notificationsOpen = false;
       this.closeCommandPalette();
     }
+  }
+
+  public closeShortcutsModal(): void {
+    this.shortcutsModalOpen = false;
+  }
+
+  public jumpToRoute(route: string): void {
+    this.closeShortcutsModal();
+    this.router.navigate([route]);
   }
 
   public openCommandPalette(): void {
