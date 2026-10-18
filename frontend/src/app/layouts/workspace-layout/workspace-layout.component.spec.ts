@@ -90,4 +90,86 @@ describe('WorkspaceLayoutComponent', () => {
     component.dismissToast('toast-123');
     expect(toastService.remove).toHaveBeenCalledWith('toast-123');
   });
+
+  it('should toggle, open, and close command palette', () => {
+    expect(component.commandPaletteOpen).toBeFalse();
+
+    component.openCommandPalette();
+    expect(component.commandPaletteOpen).toBeTrue();
+    expect(component.paletteQuery).toBe('');
+    expect(component.filteredPaletteItems.length).toBeGreaterThan(0);
+
+    component.closeCommandPalette();
+    expect(component.commandPaletteOpen).toBeFalse();
+
+    component.toggleCommandPalette();
+    expect(component.commandPaletteOpen).toBeTrue();
+    component.toggleCommandPalette();
+    expect(component.commandPaletteOpen).toBeFalse();
+  });
+
+  it('should filter command palette items by search query', () => {
+    component.paletteQuery = 'settings';
+    component.filterPaletteItems();
+    expect(component.filteredPaletteItems.some(i => i.title.toLowerCase().includes('settings'))).toBeTrue();
+
+    component.paletteQuery = 'nonexistentxyz123';
+    component.filterPaletteItems();
+    expect(component.filteredPaletteItems.length).toBe(0);
+
+    component.paletteQuery = '';
+    component.filterPaletteItems();
+    expect(component.filteredPaletteItems.length).toBe(component.paletteItems.length);
+  });
+
+  it('should execute command palette item and close palette', () => {
+    const mockAction = jasmine.createSpy('mockAction');
+    const mockItem = {
+      id: 'test-item',
+      category: 'Navigation' as const,
+      title: 'Test Command',
+      icon: '⚡',
+      action: mockAction
+    };
+
+    component.commandPaletteOpen = true;
+    component.executePaletteItem(mockItem);
+
+    expect(mockAction).toHaveBeenCalled();
+    expect(component.commandPaletteOpen).toBeFalse();
+  });
+
+  it('should handle global Ctrl+K keydown shortcut to toggle palette', () => {
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true });
+    spyOn(event, 'preventDefault');
+
+    component.handleGlobalKeydown(event);
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(component.commandPaletteOpen).toBeTrue();
+
+    const escEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+    component.handleGlobalKeydown(escEvent);
+    expect(component.commandPaletteOpen).toBeFalse();
+  });
+
+  it('should navigate palette items with ArrowDown, ArrowUp, and Enter', () => {
+    component.paletteQuery = '';
+    component.filterPaletteItems();
+    component.selectedPaletteIndex = 0;
+
+    const arrowDown = new KeyboardEvent('keydown', { key: 'ArrowDown' });
+    component.onPaletteKeydown(arrowDown);
+    expect(component.selectedPaletteIndex).toBe(1);
+
+    const arrowUp = new KeyboardEvent('keydown', { key: 'ArrowUp' });
+    component.onPaletteKeydown(arrowUp);
+    expect(component.selectedPaletteIndex).toBe(0);
+
+    const selectedItem = component.filteredPaletteItems[0];
+    spyOn(selectedItem, 'action');
+
+    const enterKey = new KeyboardEvent('keydown', { key: 'Enter' });
+    component.onPaletteKeydown(enterKey);
+    expect(selectedItem.action).toHaveBeenCalled();
+  });
 });

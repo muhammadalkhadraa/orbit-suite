@@ -1,14 +1,25 @@
-import { Component, inject } from '@angular/core';
+import { Component, HostListener, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TenantRole } from '../../core/models/models';
 
+export interface CommandPaletteItem {
+  id: string;
+  category: 'Navigation' | 'Action' | 'Resource';
+  title: string;
+  subtitle?: string;
+  icon: string;
+  badgeClass?: string;
+  action: () => void;
+}
+
 @Component({
   selector: 'app-workspace-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, FormsModule],
   template: `
     <div class="workspace-container">
       <!-- Sidebar Navigation -->
@@ -150,6 +161,13 @@ import { TenantRole } from '../../core/models/models';
             </div>
           </div>
 
+          <!-- Global Command Palette Search Trigger Button -->
+          <button class="command-palette-trigger" (click)="openCommandPalette()" title="Search workspace or jump to... (Ctrl+K)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="trigger-label">Search workspace or jump to...</span>
+            <kbd class="key-shortcut">Ctrl K</kbd>
+          </button>
+
           <div class="header-right">
             <!-- Tenant Switcher Dropdown -->
             <div class="tenant-selector" *ngIf="(availableTenants$ | async)?.length">
@@ -180,6 +198,53 @@ import { TenantRole } from '../../core/models/models';
         <main class="workspace-content">
           <router-outlet></router-outlet>
         </main>
+
+        <!-- Global Command Palette Modal Overlay -->
+        <div *ngIf="commandPaletteOpen" class="command-palette-overlay" (click)="closeCommandPalette()">
+          <div class="command-palette-modal glass-panel-elevated" (click)="$event.stopPropagation()">
+            <div class="palette-input-wrapper">
+              <svg class="palette-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input 
+                #paletteInput
+                type="text" 
+                class="palette-input" 
+                [(ngModel)]="paletteQuery" 
+                (input)="filterPaletteItems()" 
+                (keydown)="onPaletteKeydown($event)"
+                placeholder="Type a command, page, employee, or task..." 
+                autofocus 
+              />
+              <button class="palette-esc-btn" (click)="closeCommandPalette()">ESC</button>
+            </div>
+
+            <div class="palette-results">
+              <div *ngIf="filteredPaletteItems.length === 0" class="palette-empty">
+                No matching actions or resources found for "{{ paletteQuery }}".
+              </div>
+
+              <div 
+                *ngFor="let item of filteredPaletteItems; let i = index" 
+                class="palette-item" 
+                [class.active]="selectedPaletteIndex === i"
+                (click)="executePaletteItem(item)"
+                (mouseenter)="selectedPaletteIndex = i"
+              >
+                <div class="item-icon-box">{{ item.icon }}</div>
+                <div class="item-info">
+                  <div class="item-title">{{ item.title }}</div>
+                  <div class="item-subtitle" *ngIf="item.subtitle">{{ item.subtitle }}</div>
+                </div>
+                <span class="badge" [ngClass]="item.badgeClass || 'badge-indigo'">{{ item.category }}</span>
+              </div>
+            </div>
+
+            <div class="palette-footer">
+              <span><kbd>↑</kbd> <kbd>↓</kbd> Navigate</span>
+              <span><kbd>↵</kbd> Select</span>
+              <span><kbd>esc</kbd> Close</span>
+            </div>
+          </div>
+        </div>
 
         <!-- Floating Reactive Toast Notifications -->
         <div class="toast-overlay" *ngIf="toasts$ | async as toasts">
@@ -672,6 +737,204 @@ import { TenantRole } from '../../core/models/models';
         color: #ffffff;
       }
     }
+
+    // Command Palette Trigger
+    .command-palette-trigger {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.4375rem 0.875rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid $border-glass;
+      border-radius: $radius-full;
+      color: $text-muted;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      transition: all $transition-fast;
+      min-width: 280px;
+
+      @include responsive-md {
+        min-width: 0;
+        .trigger-label { display: none; }
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: $border-glass-hover;
+        color: $text-primary;
+      }
+
+      .key-shortcut {
+        margin-left: auto;
+        padding: 0.125rem 0.375rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: $radius-sm;
+        font-size: 0.6875rem;
+        font-family: inherit;
+        color: #a5b4fc;
+      }
+    }
+
+    // Command Palette Modal
+    .command-palette-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 10vh;
+      z-index: 1000;
+    }
+
+    .command-palette-modal {
+      width: 100%;
+      max-width: 580px;
+      padding: 0;
+      overflow: hidden;
+      border-radius: $radius-lg;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(99, 102, 241, 0.2);
+      animation: palettePop $transition-fast ease-out;
+    }
+
+    @keyframes palettePop {
+      from { transform: scale(0.96) translateY(-10px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .palette-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid $border-glass;
+
+      .palette-search-icon {
+        color: #a5b4fc;
+        flex-shrink: 0;
+      }
+
+      .palette-input {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: #ffffff;
+        font-size: 1rem;
+        font-weight: 500;
+
+        &::placeholder {
+          color: $text-muted;
+        }
+      }
+
+      .palette-esc-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid $border-glass;
+        border-radius: $radius-sm;
+        color: $text-muted;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        padding: 0.125rem 0.375rem;
+        cursor: pointer;
+      }
+    }
+
+    .palette-results {
+      max-height: 340px;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .palette-empty {
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: $text-muted;
+      font-size: 0.875rem;
+    }
+
+    .palette-item {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.625rem 0.875rem;
+      border-radius: $radius-md;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover, &.active {
+        background: rgba(99, 102, 241, 0.15);
+
+        .item-title {
+          color: #ffffff;
+        }
+
+        .item-icon-box {
+          background: rgba(99, 102, 241, 0.3);
+          color: #a5b4fc;
+        }
+      }
+
+      .item-icon-box {
+        width: 30px;
+        height: 30px;
+        border-radius: $radius-md;
+        background: rgba(255, 255, 255, 0.05);
+        color: $text-secondary;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9375rem;
+        flex-shrink: 0;
+        transition: all $transition-fast;
+      }
+
+      .item-info {
+        flex: 1;
+        min-width: 0;
+
+        .item-title {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: $text-secondary;
+          line-height: 1.25;
+        }
+
+        .item-subtitle {
+          font-size: 0.75rem;
+          color: $text-muted;
+          margin-top: 0.125rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+    }
+
+    .palette-footer {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 0.625rem 1.25rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid $border-glass;
+      font-size: 0.6875rem;
+      color: $text-muted;
+
+      kbd {
+        padding: 0.125rem 0.3125rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: $radius-sm;
+        color: #a5b4fc;
+        font-family: inherit;
+      }
+    }
   `]
 })
 export class WorkspaceLayoutComponent {
@@ -679,13 +942,129 @@ export class WorkspaceLayoutComponent {
   private toastService = inject(ToastService);
   private router = inject(Router);
 
+  @ViewChild('paletteInput') paletteInputElement?: ElementRef<HTMLInputElement>;
+
   public mobileSidebarOpen = false;
   public currentUser$ = this.authService.currentUser$;
   public activeTenant$ = this.authService.activeTenant$;
   public availableTenants$ = this.authService.availableTenants$;
   public toasts$ = this.toastService.toasts$;
 
-  constructor() {}
+  // Command Palette State
+  public commandPaletteOpen = false;
+  public paletteQuery = '';
+  public selectedPaletteIndex = 0;
+  public paletteItems: CommandPaletteItem[] = [];
+  public filteredPaletteItems: CommandPaletteItem[] = [];
+
+  constructor() {
+    this.initializePaletteItems();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  public handleGlobalKeydown(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      this.toggleCommandPalette();
+    } else if (event.key === 'Escape' && this.commandPaletteOpen) {
+      this.closeCommandPalette();
+    }
+  }
+
+  public openCommandPalette(): void {
+    this.commandPaletteOpen = true;
+    this.paletteQuery = '';
+    this.filterPaletteItems();
+    this.selectedPaletteIndex = 0;
+    setTimeout(() => {
+      this.paletteInputElement?.nativeElement?.focus();
+    }, 50);
+  }
+
+  public closeCommandPalette(): void {
+    this.commandPaletteOpen = false;
+  }
+
+  public toggleCommandPalette(): void {
+    if (this.commandPaletteOpen) {
+      this.closeCommandPalette();
+    } else {
+      this.openCommandPalette();
+    }
+  }
+
+  public filterPaletteItems(): void {
+    if (!this.paletteQuery.trim()) {
+      this.filteredPaletteItems = [...this.paletteItems];
+    } else {
+      const q = this.paletteQuery.toLowerCase();
+      this.filteredPaletteItems = this.paletteItems.filter(item =>
+        item.title.toLowerCase().includes(q) ||
+        (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
+        item.category.toLowerCase().includes(q)
+      );
+    }
+    this.selectedPaletteIndex = 0;
+  }
+
+  public onPaletteKeydown(event: KeyboardEvent): void {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (this.selectedPaletteIndex < this.filteredPaletteItems.length - 1) {
+        this.selectedPaletteIndex++;
+      }
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (this.selectedPaletteIndex > 0) {
+        this.selectedPaletteIndex--;
+      }
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const selected = this.filteredPaletteItems[this.selectedPaletteIndex];
+      if (selected) {
+        this.executePaletteItem(selected);
+      }
+    }
+  }
+
+  public executePaletteItem(item: CommandPaletteItem): void {
+    this.closeCommandPalette();
+    item.action();
+  }
+
+  private initializePaletteItems(): void {
+    this.paletteItems = [
+      // Navigation
+      { id: 'nav-dash', category: 'Navigation', title: 'Dashboard', subtitle: 'Executive high-level KPIs and activity feed', icon: '📊', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/dashboard']) },
+      { id: 'nav-tasks', category: 'Navigation', title: 'Tasks & Projects', subtitle: 'Kanban board and work item management', icon: '✓', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/tasks']) },
+      { id: 'nav-emp', category: 'Navigation', title: 'Employees Directory', subtitle: 'Decoupled personnel and managerial hierarchy', icon: '👤', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/employees']) },
+      { id: 'nav-org', category: 'Navigation', title: 'Organization Structure', subtitle: 'Facilities, branches, and functional departments', icon: '🏢', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/organization']) },
+      { id: 'nav-crm', category: 'Navigation', title: 'CRM & Sales', subtitle: 'Accounts, pipeline stages, and conversion tracking', icon: '💼', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/crm']) },
+      { id: 'nav-sup', category: 'Navigation', title: 'Customer Support', subtitle: 'Incident ticketing desk, SLA governance, comments', icon: '💬', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/support']) },
+      { id: 'nav-inv', category: 'Navigation', title: 'Inventory & Procurement', subtitle: 'Warehousing, stock levels, and audit logs', icon: '📦', badgeClass: 'badge-amber', action: () => this.router.navigate(['/app/inventory']) },
+      { id: 'nav-mfg', category: 'Navigation', title: 'Manufacturing', subtitle: 'Work orders, Bill of Materials, and work centers', icon: '⚙️', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/manufacturing']) },
+      { id: 'nav-hr', category: 'Navigation', title: 'HR & Attendance', subtitle: 'Shifts, clock in/out, and leave management', icon: '⏱️', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/hr']) },
+      { id: 'nav-fin', category: 'Navigation', title: 'Invoicing & Finance', subtitle: 'General ledger invoices, payments, and accounting', icon: '💵', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/finance']) },
+      { id: 'nav-rep', category: 'Navigation', title: 'Reports & Dashboards', subtitle: 'Executive cross-module reporting and CSV exports', icon: '📈', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/reports']) },
+      { id: 'nav-aud', category: 'Navigation', title: 'Audit Trail', subtitle: 'Immutable compliance logging and record changes', icon: '🛡️', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/audit']) },
+      { id: 'nav-set', category: 'Navigation', title: 'Workspace Settings', subtitle: 'Tenant parameters, password, team access, and API keys', icon: '⚙️', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/settings']) },
+
+      // Quick Actions
+      { id: 'act-task', category: 'Action', title: 'Create Work Item', subtitle: 'Create a new task on the Kanban board', icon: '+', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/tasks']) },
+      { id: 'act-emp', category: 'Action', title: 'Add Employee Profile', subtitle: 'Register personnel without mandating credentials', icon: '+', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/employees']) },
+      { id: 'act-branch', category: 'Action', title: 'Add Branch Facility', subtitle: 'Provision an operating warehouse or office location', icon: '+', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/organization']) },
+      { id: 'act-role-owner', category: 'Action', title: 'Preview as Owner', subtitle: 'Switch active demo session to Company Owner', icon: '👑', badgeClass: 'badge-violet', action: () => this.switchRole('Owner') },
+      { id: 'act-role-mgr', category: 'Action', title: 'Preview as Manager', subtitle: 'Switch active demo session to Department Manager', icon: '👔', badgeClass: 'badge-cyan', action: () => this.switchRole('Manager') },
+      { id: 'act-role-emp', category: 'Action', title: 'Preview as Employee', subtitle: 'Switch active demo session to Individual Contributor', icon: '💼', badgeClass: 'badge-emerald', action: () => this.switchRole('Employee') },
+
+      // Key Resources
+      { id: 'res-task-1', category: 'Resource', title: 'Q4 Freight Logistics Audit', subtitle: 'Task assigned to David Lee (Operations)', icon: '📌', badgeClass: 'badge-amber', action: () => this.router.navigate(['/app/tasks']) },
+      { id: 'res-task-2', category: 'Resource', title: 'Inventory Reorder Threshold Sync', subtitle: 'Urgent task (Supply Chain Calibration)', icon: '📌', badgeClass: 'badge-rose', action: () => this.router.navigate(['/app/tasks']) },
+      { id: 'res-emp-1', category: 'Resource', title: 'Alex Morgan', subtitle: 'Founder & CEO (Global Headquarters)', icon: '👤', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/employees']) },
+      { id: 'res-emp-2', category: 'Resource', title: 'Sarah Jenkins', subtitle: 'Director of Operations (EMEA)', icon: '👤', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/employees']) }
+    ];
+    this.filteredPaletteItems = [...this.paletteItems];
+  }
 
   public toggleMobileSidebar(): void {
     this.mobileSidebarOpen = !this.mobileSidebarOpen;
