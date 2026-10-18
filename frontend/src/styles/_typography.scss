@@ -1,0 +1,36 @@
+@use 'variables' as *;
+
+.font-heading-1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: $text-primary;
+  letter-spacing: -0.025em;
+}
+
+.font-heading-2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $text-primary;
+  letter-spacing: -0.02em;
+}
+
+.font-heading-3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: $text-primary;
+}
+
+.font-body {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: $text-secondary;
+}
+
+.font-caption {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: $text-muted;
+}

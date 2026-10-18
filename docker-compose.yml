@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: orbit-backend
+    restart: unless-stopped
+    ports:
+      - "5115:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/orbit.db
+      - Jwt__SecretKey=OrbitBusinessSuiteSuperSecretKeyForDevelopmentAndTestingPurposesOnly2026!
+      - Jwt__Issuer=https://orbit.business
+      - Jwt__Audience=https://orbit.business
+      - Cors__AllowedOrigins=http://localhost:4200,http://localhost:80,http://localhost
+    volumes:
+      - orbit_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: orbit-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  orbit_data:

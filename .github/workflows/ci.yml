@@ -1,0 +1,57 @@
+name: Orbit Suite CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  backend-tests:
+    name: Backend Build & Test (.NET 10)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore backend/Orbit.slnx
+
+      - name: Build Solution
+        run: dotnet build backend/Orbit.slnx -c Release --no-restore
+
+      - name: Run Automated Tests
+        run: dotnet test backend/Orbit.slnx -c Release --no-build --nologo --verbosity normal
+
+  frontend-build:
+    name: Frontend Production Build (Angular 19)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Frontend Unit Tests
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Build Angular SPA
+        run: npm run build -- --configuration production
