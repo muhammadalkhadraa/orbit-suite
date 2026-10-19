@@ -3222,6 +3222,18 @@ export class ApiService {
 
   private mockAuditLogs: AuditLog[] = [
     {
+      id: 'aud-0',
+      tenantId: '11111111-2222-3333-4444-555555555555',
+      userId: 'user-demo-owner',
+      userEmail: 'owner@starlight.com',
+      action: 'Login',
+      entityName: 'UserSession',
+      entityId: 'user-demo-owner',
+      detailsJson: JSON.stringify({ email: 'owner@starlight.com', client: 'Orbit Web App', method: 'PasswordAuth' }),
+      ipAddress: '192.168.1.100',
+      timestampUtc: new Date(Date.now() - 1000 * 60 * 10).toISOString()
+    },
+    {
       id: 'aud-1',
       tenantId: '11111111-2222-3333-4444-555555555555',
       userId: 'user-demo-owner',
@@ -3280,6 +3292,18 @@ export class ApiService {
       detailsJson: JSON.stringify({ ticketNumber: 'TCK-1001', resolution: 'Applied latency patch and indexed buffers.' }),
       ipAddress: '192.168.1.142',
       timestampUtc: new Date(Date.now() - 1000 * 60 * 240).toISOString()
+    },
+    {
+      id: 'aud-6',
+      tenantId: '11111111-2222-3333-4444-555555555555',
+      userId: 'user-demo-employee',
+      userEmail: 'employee@starlight.com',
+      action: 'Logout',
+      entityName: 'UserSession',
+      entityId: 'user-demo-employee',
+      detailsJson: JSON.stringify({ reason: 'UserInitiated', client: 'Orbit Web App' }),
+      ipAddress: '10.0.4.15',
+      timestampUtc: new Date(Date.now() - 1000 * 60 * 300).toISOString()
     }
   ];
 
@@ -3289,6 +3313,8 @@ export class ApiService {
       if (filter.search) params.search = filter.search;
       if (filter.entityName) params.entityName = filter.entityName;
       if (filter.action) params.action = filter.action;
+      if (filter.userId) params.userId = filter.userId;
+      if (filter.userEmail) params.userEmail = filter.userEmail;
       if (filter.fromDateUtc) params.fromDateUtc = filter.fromDateUtc;
       if (filter.toDateUtc) params.toDateUtc = filter.toDateUtc;
       if (filter.pageNumber) params.pageNumber = filter.pageNumber;
@@ -3311,7 +3337,14 @@ export class ApiService {
           items = items.filter(i => i.entityName === filter.entityName);
         }
         if (filter?.action && filter.action !== 'All') {
-          items = items.filter(i => i.action === filter.action);
+          items = items.filter(i => i.action.toLowerCase() === filter.action!.toLowerCase());
+        }
+        if (filter?.userId) {
+          items = items.filter(i => i.userId === filter.userId);
+        }
+        if (filter?.userEmail) {
+          const e = filter.userEmail.toLowerCase();
+          items = items.filter(i => i.userEmail && i.userEmail.toLowerCase() === e);
         }
 
         const page = filter?.pageNumber || 1;

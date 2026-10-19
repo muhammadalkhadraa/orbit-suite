@@ -49,6 +49,19 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost("logout")]
+    public async Task<ActionResult<ApiResponse<object>>> Logout([FromBody] LogoutRequest? request, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? string.Empty;
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+        var tenantId = _tenantContext.CurrentTenantId;
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        await _identityService.LogoutAsync(userId, tenantId, email, ip, request?.Reason, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { message = "Logged out successfully." }));
+    }
+
+    [Authorize]
     [HttpGet("context")]
     public ActionResult<ApiResponse<object>> GetContext()
     {

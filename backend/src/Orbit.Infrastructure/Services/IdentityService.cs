@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,15 +26,18 @@ public class IdentityService : IIdentityService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly ICurrentUserService? _currentUserService;
 
     public IdentityService(
         UserManager<ApplicationUser> userManager,
         IApplicationDbContext context,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ICurrentUserService? currentUserService = null)
     {
         _userManager = userManager;
         _context = context;
         _configuration = configuration;
+        _currentUserService = currentUserService;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -152,6 +156,29 @@ public class IdentityService : IIdentityService
 
         var token = GenerateJwtToken(user, tenant.Id, TenantRole.Owner);
 
+        var regAudit = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            UserId = user.Id,
+            UserEmail = user.Email,
+            Action = "Register",
+            EntityName = "UserSession",
+            EntityId = user.Id,
+            DetailsJson = JsonSerializer.Serialize(new
+            {
+                user.Email,
+                Tenant = tenant.Name,
+                Role = TenantRole.Owner.ToString(),
+                Client = "Orbit Web App",
+                Method = "OrganizationRegistration"
+            }),
+            IpAddress = _currentUserService?.IpAddress ?? "127.0.0.1",
+            TimestampUtc = DateTime.UtcNow
+        };
+        _context.AuditLogs.Add(regAudit);
+        await _context.SaveChangesAsync(cancellationToken);
+
         return new AuthResponse
         {
             AccessToken = token,
@@ -206,6 +233,29 @@ public class IdentityService : IIdentityService
 
         var token = GenerateJwtToken(user, activeTenant.Id, activeMembership.Role);
 
+        var loginAudit = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            TenantId = activeTenant.Id,
+            UserId = user.Id,
+            UserEmail = user.Email,
+            Action = "Login",
+            EntityName = "UserSession",
+            EntityId = user.Id,
+            DetailsJson = JsonSerializer.Serialize(new
+            {
+                user.Email,
+                Tenant = activeTenant.Name,
+                Role = activeMembership.Role.ToString(),
+                Client = "Orbit Web App",
+                Method = "PasswordAuth"
+            }),
+            IpAddress = _currentUserService?.IpAddress ?? "127.0.0.1",
+            TimestampUtc = DateTime.UtcNow
+        };
+        _context.AuditLogs.Add(loginAudit);
+        await _context.SaveChangesAsync(cancellationToken);
+
         return new AuthResponse
         {
             AccessToken = token,
@@ -254,6 +304,26 @@ public class IdentityService : IIdentityService
             Status = m.Status
         }).ToList();
 
+        var switchAudit = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            TenantId = targetTenant.Id,
+            UserId = user.Id,
+            UserEmail = user.Email,
+            Action = "SwitchTenant",
+            EntityName = "TenantMembership",
+            EntityId = targetTenant.Id.ToString(),
+            DetailsJson = JsonSerializer.Serialize(new
+            {
+                TargetTenant = targetTenant.Name,
+                Role = targetMembership.Role.ToString()
+            }),
+            IpAddress = _currentUserService?.IpAddress ?? "127.0.0.1",
+            TimestampUtc = DateTime.UtcNow
+        };
+        _context.AuditLogs.Add(switchAudit);
+        await _context.SaveChangesAsync(cancellationToken);
+
         return new AuthResponse
         {
             AccessToken = token,
@@ -273,6 +343,31 @@ public class IdentityService : IIdentityService
             },
             AvailableTenants = availableTenants
         };
+    }
+
+    public async Task LogoutAsync(string userId, Guid? tenantId, string? userEmail, string? ipAddress, string? reason, CancellationToken cancellationToken = default)
+    {
+        if (!tenantId.HasValue) return;
+
+        var logoutAudit = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId.Value,
+            UserId = userId,
+            UserEmail = userEmail,
+            Action = "Logout",
+            EntityName = "UserSession",
+            EntityId = userId,
+            DetailsJson = JsonSerializer.Serialize(new
+            {
+                Reason = reason ?? "UserInitiated",
+                Client = "Orbit Web App"
+            }),
+            IpAddress = ipAddress ?? _currentUserService?.IpAddress ?? "127.0.0.1",
+            TimestampUtc = DateTime.UtcNow
+        };
+        _context.AuditLogs.Add(logoutAudit);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<bool> ValidateTenantMembershipAsync(string userId, Guid tenantId, CancellationToken cancellationToken = default)

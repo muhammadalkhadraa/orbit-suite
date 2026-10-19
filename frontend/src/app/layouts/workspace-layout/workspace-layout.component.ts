@@ -2198,7 +2198,8 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.idleTimerService.expired$.subscribe(() => {
         this.toastService.warning('Session Timed Out', 'Your session was ended due to inactivity.');
-        this.logout();
+        this.authService.logout('InactivityTimeout');
+        this.router.navigate(['/login']);
       })
     );
 
@@ -2453,7 +2454,7 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
   }
 
   public logout(): void {
-    this.authService.logout();
+    this.authService.logout('UserInitiated');
     this.router.navigate(['/login']);
   }
 

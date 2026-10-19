@@ -123,9 +123,27 @@ import { AuditLog, AuditLogFilter, TenantRole } from '../../core/models/models';
           />
         </div>
 
+        <div class="user-filter-box" *ngIf="selectedUserEmail">
+          <span class="user-chip">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            {{ selectedUserEmail }}
+            <button class="chip-remove" (click)="clearUserFilter()" title="Clear user filter">×</button>
+          </span>
+        </div>
+
         <div class="filter-group">
+          <input
+            type="text"
+            [(ngModel)]="selectedUserEmail"
+            (ngModelChange)="onFilterChange()"
+            placeholder="Filter by user email..."
+            class="select-input user-input"
+          />
+
           <select [(ngModel)]="selectedEntity" (change)="onFilterChange()" class="select-input">
             <option value="All">All Entities</option>
+            <option value="UserSession">User Sessions (Auth/Logins)</option>
+            <option value="TenantMembership">Tenant Memberships</option>
             <option value="ApplicationUser">Identity / Users</option>
             <option value="TaskItem">Tasks</option>
             <option value="Customer">Customers</option>
@@ -143,13 +161,17 @@ import { AuditLog, AuditLogFilter, TenantRole } from '../../core/models/models';
 
           <select [(ngModel)]="selectedAction" (change)="onFilterChange()" class="select-input">
             <option value="All">All Actions</option>
-            <option value="UserLogin">User Login</option>
+            <option value="Login">User Login</option>
+            <option value="Logout">User Logout</option>
+            <option value="Register">Registration</option>
+            <option value="SwitchTenant">Switch Tenant</option>
             <option value="Create">Create Operations</option>
             <option value="Update">Update Operations</option>
             <option value="Delete">Delete Operations</option>
             <option value="Void">Void Operations</option>
             <option value="ClockIn">Clock In</option>
             <option value="ClockOut">Clock Out</option>
+            <option value="Export">Report Export</option>
             <option value="ResolveTicket">Resolve Ticket</option>
           </select>
         </div>
@@ -175,7 +197,12 @@ import { AuditLog, AuditLogFilter, TenantRole } from '../../core/models/models';
                 <td class="text-secondary font-mono">{{ log.timestampUtc | date:'yyyy-MM-dd HH:mm:ss' }}</td>
                 <td>
                   <div class="operator-cell">
-                    <span class="user-email">{{ log.userEmail || 'System Process' }}</span>
+                    <span
+                      class="user-email clickable"
+                      (click)="filterByUser(log.userEmail)"
+                      title="Filter all activity for this user">
+                      {{ log.userEmail || 'System Process' }}
+                    </span>
                   </div>
                 </td>
                 <td>
@@ -406,10 +433,47 @@ import { AuditLog, AuditLogFilter, TenantRole } from '../../core/models/models';
       }
     }
 
+    .user-filter-box {
+      display: flex;
+      align-items: center;
+
+      .user-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(56, 189, 248, 0.15);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        color: #7dd3fc;
+        padding: 0.35rem 0.65rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 500;
+
+        .chip-remove {
+          background: none;
+          border: none;
+          color: #7dd3fc;
+          font-size: 1.1rem;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          &:hover { color: #f87171; }
+        }
+      }
+    }
+
     .filter-group {
       display: flex;
       align-items: center;
       gap: 0.75rem;
+
+      .user-input {
+        min-width: 170px;
+        &::placeholder { color: #64748b; }
+      }
 
       .select-input {
         background: rgba(30, 41, 59, 0.7);
@@ -464,7 +528,19 @@ import { AuditLog, AuditLogFilter, TenantRole } from '../../core/models/models';
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      .user-email { font-weight: 500; }
+      .user-email {
+        font-weight: 500;
+        &.clickable {
+          cursor: pointer;
+          color: #38bdf8;
+          text-decoration: underline;
+          text-decoration-style: dotted;
+          transition: color 0.15s ease;
+          &:hover {
+            color: #7dd3fc;
+          }
+        }
+      }
     }
 
     .entity-pill {
@@ -649,6 +725,7 @@ export class AuditComponent implements OnInit {
   public pageSize = 15;
 
   public searchQuery = '';
+  public selectedUserEmail = '';
   public selectedEntity = 'All';
   public selectedAction = 'All';
 
@@ -672,6 +749,7 @@ export class AuditComponent implements OnInit {
       search: this.searchQuery || undefined,
       entityName: this.selectedEntity !== 'All' ? this.selectedEntity : undefined,
       action: this.selectedAction !== 'All' ? this.selectedAction : undefined,
+      userEmail: this.selectedUserEmail.trim() || undefined,
       pageNumber: this.currentPage,
       pageSize: this.pageSize
     };
@@ -686,10 +764,21 @@ export class AuditComponent implements OnInit {
         // Tally telemetry
         const actors = new Set(this.auditLogs.map(a => a.userEmail).filter(Boolean));
         this.uniqueActorsCount = Math.max(1, actors.size);
-        this.securityEventsCount = this.auditLogs.filter(a => a.action.toLowerCase().includes('login') || a.action.toLowerCase().includes('auth')).length;
-        this.mutationEventsCount = this.auditLogs.filter(a => !a.action.toLowerCase().includes('login')).length;
+        this.securityEventsCount = this.auditLogs.filter(a => a.action.toLowerCase().includes('login') || a.action.toLowerCase().includes('logout') || a.action.toLowerCase().includes('auth')).length;
+        this.mutationEventsCount = this.auditLogs.filter(a => !a.action.toLowerCase().includes('login') && !a.action.toLowerCase().includes('logout')).length;
       }
     });
+  }
+
+  public filterByUser(email?: string): void {
+    if (!email) return;
+    this.selectedUserEmail = email;
+    this.onFilterChange();
+  }
+
+  public clearUserFilter(): void {
+    this.selectedUserEmail = '';
+    this.onFilterChange();
   }
 
   public onFilterChange(): void {
@@ -713,7 +802,7 @@ export class AuditComponent implements OnInit {
   }
 
   public formatJson(rawJson?: string): string {
-    if (!rawJson) return '{\\n  "status": "No additional payload attributes recorded."\\n}';
+    if (!rawJson) return '{\n  "status": "No additional payload attributes recorded."\n}';
     try {
       const parsed = JSON.parse(rawJson);
       return JSON.stringify(parsed, null, 2);
@@ -724,7 +813,9 @@ export class AuditComponent implements OnInit {
 
   public getActionBadgeClass(action: string): string {
     const act = action.toLowerCase();
-    if (act.includes('login') || act.includes('auth')) return 'badge-indigo';
+    if (act.includes('login') || act.includes('register')) return 'badge-indigo';
+    if (act.includes('logout')) return 'badge-amber';
+    if (act.includes('switch')) return 'badge-cyan';
     if (act.includes('create') || act.includes('clockin')) return 'badge-emerald';
     if (act.includes('update') || act.includes('resolve')) return 'badge-cyan';
     if (act.includes('void') || act.includes('delete') || act.includes('reject')) return 'badge-rose';

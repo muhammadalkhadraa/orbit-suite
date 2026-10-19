@@ -101,7 +101,13 @@ export class AuthService {
     ) as Observable<AuthResponse>;
   }
 
-  public logout(): void {
+  public logout(reason?: string): void {
+    const token = this.getToken();
+    if (token && !token.startsWith('demo_')) {
+      this.http.post(`${this.apiUrl}/logout`, { reason: reason || 'UserInitiated' }).pipe(
+        catchError(() => of(null))
+      ).subscribe();
+    }
     sessionStorage.removeItem(this.TOKEN_KEY);
     sessionStorage.removeItem(this.SESSION_KEY);
     this.currentUserSubject.next(null);

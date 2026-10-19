@@ -103,5 +103,24 @@ describe('AuditComponent', () => {
     component.exportAuditCsv();
     expect(document.createElement).toHaveBeenCalledWith('a');
   });
+
+  it('should allow filtering audit logs by specific user email and clearing filter', () => {
+    spyOn(component, 'loadAuditLogs');
+
+    component.filterByUser('sarah.jenkins@orbitbusiness.io');
+    expect(component.selectedUserEmail).toBe('sarah.jenkins@orbitbusiness.io');
+    expect(component.currentPage).toBe(1);
+    expect(component.loadAuditLogs).toHaveBeenCalled();
+
+    component.clearUserFilter();
+    expect(component.selectedUserEmail).toBe('');
+    expect(component.loadAuditLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it('should map Logout action to badge-amber color', () => {
+    expect(component.getActionBadgeClass('Logout')).toBe('badge-amber');
+    expect(component.getActionBadgeClass('Login')).toBe('badge-indigo');
+    expect(component.getActionBadgeClass('Register')).toBe('badge-indigo');
+  });
 });
 

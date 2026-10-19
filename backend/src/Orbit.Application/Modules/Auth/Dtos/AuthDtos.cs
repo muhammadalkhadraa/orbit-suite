@@ -23,6 +23,11 @@ public class SwitchTenantRequest
     public Guid TenantId { get; set; }
 }
 
+public class LogoutRequest
+{
+    public string? Reason { get; set; }
+}
+
 public class AuthResponse
 {
     public string AccessToken { get; set; } = string.Empty;

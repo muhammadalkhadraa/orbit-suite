@@ -943,6 +943,8 @@ export interface AuditLogFilter {
   search?: string;
   entityName?: string;
   action?: string;
+  userId?: string;
+  userEmail?: string;
   fromDateUtc?: string;
   toDateUtc?: string;
   pageNumber?: number;

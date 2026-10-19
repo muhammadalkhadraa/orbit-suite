@@ -77,6 +77,17 @@ public class AuditService : IAuditService
             query = query.Where(a => a.Action == filter.Action);
         }
 
+        if (!string.IsNullOrWhiteSpace(filter.UserId))
+        {
+            query = query.Where(a => a.UserId == filter.UserId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.UserEmail))
+        {
+            var email = filter.UserEmail.Trim().ToLower();
+            query = query.Where(a => a.UserEmail != null && a.UserEmail.ToLower() == email);
+        }
+
         if (filter.FromDateUtc.HasValue)
         {
             query = query.Where(a => a.TimestampUtc >= filter.FromDateUtc.Value);

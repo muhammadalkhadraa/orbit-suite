@@ -92,4 +92,37 @@ public class AuditTests
         filteredResult.Data.Should().HaveCount(1);
         filteredResult.Data[0].Action.Should().Be("CreateInvoice");
     }
+
+    [Fact]
+    public async Task GetLogsAsync_FiltersByUserIdAndEmail_AndTracksLoginLogoutChronology()
+    {
+        var (db, tenantContext, userService, auditService) = SetupTestEnvironment();
+        var tenantId = Guid.NewGuid();
+
+        db.AuditLogs.AddRange(
+            new AuditLog { Id = Guid.NewGuid(), TenantId = tenantId, UserId = "user-1", UserEmail = "sarah@orbit.com", Action = "Login", EntityName = "UserSession", DetailsJson = "{\"Method\":\"PasswordAuth\"}", TimestampUtc = DateTime.UtcNow.AddMinutes(-30) },
+            new AuditLog { Id = Guid.NewGuid(), TenantId = tenantId, UserId = "user-1", UserEmail = "sarah@orbit.com", Action = "CreateTask", EntityName = "TaskItem", DetailsJson = "{\"Title\":\"Sprint Planning\"}", TimestampUtc = DateTime.UtcNow.AddMinutes(-20) },
+            new AuditLog { Id = Guid.NewGuid(), TenantId = tenantId, UserId = "user-1", UserEmail = "sarah@orbit.com", Action = "Logout", EntityName = "UserSession", DetailsJson = "{\"Reason\":\"UserInitiated\"}", TimestampUtc = DateTime.UtcNow.AddMinutes(-10) },
+            new AuditLog { Id = Guid.NewGuid(), TenantId = tenantId, UserId = "user-2", UserEmail = "john@orbit.com", Action = "Login", EntityName = "UserSession", DetailsJson = "{\"Method\":\"PasswordAuth\"}", TimestampUtc = DateTime.UtcNow.AddMinutes(-5) }
+        );
+        await db.SaveChangesAsync();
+
+        tenantContext.SetContext(tenantId, "admin", TenantRole.Owner);
+
+        // Filter by UserId
+        var user1Logs = await auditService.GetLogsAsync(new AuditLogFilterRequest { UserId = "user-1" });
+        user1Logs.Data.Should().HaveCount(3);
+        user1Logs.Data.Should().OnlyContain(l => l.UserId == "user-1");
+
+        // Filter by UserEmail
+        var sarahLogs = await auditService.GetLogsAsync(new AuditLogFilterRequest { UserEmail = "sarah@orbit.com" });
+        sarahLogs.Data.Should().HaveCount(3);
+        sarahLogs.Data.Select(l => l.Action).Should().Contain(new[] { "Login", "CreateTask", "Logout" });
+
+        // Filter by Action Logout
+        var logoutLogs = await auditService.GetLogsAsync(new AuditLogFilterRequest { Action = "Logout" });
+        logoutLogs.Data.Should().HaveCount(1);
+        logoutLogs.Data[0].UserId.Should().Be("user-1");
+        logoutLogs.Data[0].DetailsJson.Should().Contain("UserInitiated");
+    }
 }
