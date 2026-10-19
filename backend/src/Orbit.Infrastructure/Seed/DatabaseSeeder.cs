@@ -726,10 +726,16 @@ public static class DatabaseSeeder
 
     private static async Task EnsureSchemaCreatedAsync(OrbitDbContext db)
     {
+        if (db.Database.IsSqlServer())
+        {
+            await db.Database.EnsureCreatedAsync();
+            return;
+        }
+
         // Generates the DDL creation script for the entire EF Core model
         var script = db.Database.GenerateCreateScript();
 
-        // Convert CREATE statements to IF NOT EXISTS to prevent conflicts if some tables already exist in SQLite
+        // Convert CREATE statements to IF NOT EXISTS to prevent conflicts if some tables already exist
         var safeScript = script
             .Replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
             .Replace("CREATE UNIQUE INDEX ", "CREATE UNIQUE INDEX IF NOT EXISTS ")
