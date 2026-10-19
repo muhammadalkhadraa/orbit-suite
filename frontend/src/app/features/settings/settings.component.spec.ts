@@ -4,6 +4,9 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { ToastService } from '../../core/services/toast.service';
 
+import { AuthService } from '../../core/services/auth.service';
+import { of } from 'rxjs';
+
 describe('SettingsComponent', () => {
   let component: SettingsComponent;
   let fixture: ComponentFixture<SettingsComponent>;
@@ -12,7 +15,17 @@ describe('SettingsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SettingsComponent, HttpClientTestingModule],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            activeTenant$: of({ id: 't-1', name: 'Apex Global', slug: 'apex', role: 'Owner' }),
+            currentUser$: of({ id: 'u-1', fullName: 'Alexander Vance', email: 'alex@apex.com' }),
+            currentRole: 'Owner'
+          }
+        }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(SettingsComponent);
@@ -117,4 +130,11 @@ describe('SettingsComponent', () => {
     expect(component.apiKey.startsWith('orb_live_sec_')).toBeTrue();
     expect(toastService.warning).toHaveBeenCalled();
   });
+
+  it('should export team members roster to CSV format', () => {
+    spyOn(document, 'createElement').and.callThrough();
+    component.exportTeamCsv();
+    expect(document.createElement).toHaveBeenCalledWith('a');
+  });
 });
+

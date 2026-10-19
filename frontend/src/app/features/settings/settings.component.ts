@@ -193,10 +193,16 @@ interface TeamMember {
               <h2 class="font-heading-3">Authorized Team Members</h2>
               <p class="font-caption">Users with active cryptographic memberships within this company tenant</p>
             </div>
-            <button (click)="openInviteModal()" class="btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span>Invite Team Member</span>
-            </button>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button (click)="exportTeamCsv()" class="btn-secondary" title="Export Team Roster to CSV">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export CSV</span>
+              </button>
+              <button (click)="openInviteModal()" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Invite Team Member</span>
+              </button>
+            </div>
           </div>
 
           <div class="table-container">
@@ -793,4 +799,29 @@ export class SettingsComponent implements OnInit {
       default: return 'badge-indigo';
     }
   }
+
+  public exportTeamCsv(): void {
+    const headers = ['Full Name', 'Email', 'Role', 'Status', 'Last Active'];
+    const rows = this.teamMembers.map(m => [
+      `"${m.fullName.replace(/"/g, '""')}"`,
+      `"${m.email.replace(/"/g, '""')}"`,
+      `"${m.role}"`,
+      `"${m.status}"`,
+      `"${(m.lastActive || '').replace(/"/g, '""')}"`
+    ]);
+
+    this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-team-members-${Date.now()}.csv`);
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
+
