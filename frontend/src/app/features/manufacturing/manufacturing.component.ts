@@ -35,6 +35,10 @@ import {
           <p class="font-caption">Coordinate shop-floor assembly, track production progress, manage recipe formulations, and yield finished goods into warehouse inventory</p>
         </div>
         <div class="header-actions">
+          <button (click)="exportManufacturingCsv()" class="btn-secondary" title="Export Work Orders / BOMs to CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
           <button *ngIf="canManageManufacturing" (click)="openCreateBomModal()" class="btn-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
             <span>Create BOM</span>
@@ -1655,4 +1659,49 @@ export class ManufacturingComponent implements OnInit {
     if (wo.isOverdue) return 'progress-rose';
     return 'progress-amber';
   }
+
+  public exportManufacturingCsv(): void {
+    if (this.activeTab === 'boms') {
+      const headers = ['BOM #', 'Recipe Name', 'Finished Good SKU', 'Product Name', 'Version', 'Components Count', 'Status'];
+      const rows = this.boms.map(b => [
+        `"${b.bomNumber}"`,
+        `"${b.name.replace(/"/g, '""')}"`,
+        `"${b.productSku.replace(/"/g, '""')}"`,
+        `"${b.productName.replace(/"/g, '""')}"`,
+        `"${b.version}"`,
+        `"${b.items?.length || 0}"`,
+        `"${b.isActive ? 'Active' : 'Archived'}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-manufacturing-boms-${Date.now()}.csv`);
+    } else {
+      const headers = ['Order #', 'Product SKU', 'Product Name', 'Facility', 'Lead Engineer', 'Target Qty', 'Produced Qty', 'Progress (%)', 'Priority', 'Status', 'Due Date', 'Is Overdue'];
+      const rows = this.filteredWorkOrders.map(wo => [
+        `"${wo.orderNumber}"`,
+        `"${wo.productSku.replace(/"/g, '""')}"`,
+        `"${wo.productName.replace(/"/g, '""')}"`,
+        `"${wo.branchName.replace(/"/g, '""')}"`,
+        `"${(wo.assignedEmployeeName || 'Unassigned').replace(/"/g, '""')}"`,
+        `"${wo.quantityTarget}"`,
+        `"${wo.quantityProduced}"`,
+        `"${wo.progressPercentage}%"`,
+        `"${wo.priority}"`,
+        `"${wo.status}"`,
+        `"${wo.dueDateUtc || ''}"`,
+        `"${wo.isOverdue ? 'YES' : 'NO'}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-manufacturing-workorders-${Date.now()}.csv`);
+    }
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
+
