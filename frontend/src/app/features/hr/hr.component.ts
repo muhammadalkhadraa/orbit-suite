@@ -36,6 +36,10 @@ import {
           <p class="font-caption">Self-service digital time clock, tiered leave approval workflows, daily attendance rosters, and shift scheduling</p>
         </div>
         <div class="header-actions">
+          <button (click)="exportHrCsv()" class="btn-secondary" title="Export Leaves / Attendance to CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
           <button (click)="openCreateLeaveModal()" class="btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
             <span>Request Time Off</span>
@@ -2160,4 +2164,62 @@ export class HrComponent implements OnInit {
       default: return 'status-present';
     }
   }
+
+  public exportHrCsv(): void {
+    if (this.activeTab === 'attendance') {
+      const headers = ['Date', 'Employee Name', 'Employee #', 'Department', 'Status', 'Check In', 'Check Out', 'Total Hours', 'Work Location', 'Notes'];
+      const rows = this.filteredAttendance.map(a => [
+        `"${a.date}"`,
+        `"${a.employeeName.replace(/"/g, '""')}"`,
+        `"${a.employeeNumber || ''}"`,
+        `"${(a.departmentName || '').replace(/"/g, '""')}"`,
+        `"${a.status}"`,
+        `"${a.checkInTimeUtc || ''}"`,
+        `"${a.checkOutTimeUtc || ''}"`,
+        `"${a.totalHours || 0}"`,
+        `"${(a.workLocation || '').replace(/"/g, '""')}"`,
+        `"${(a.notes || '').replace(/"/g, '""')}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-hr-attendance-${Date.now()}.csv`);
+    } else if (this.activeTab === 'shifts') {
+      const headers = ['Shift Name', 'Employee Name', 'Shift Type', 'Start Time', 'End Time', 'Effective From'];
+      const rows = this.shiftSchedules.map(s => [
+        `"${s.shiftName.replace(/"/g, '""')}"`,
+        `"${s.employeeName.replace(/"/g, '""')}"`,
+        `"${s.shiftType}"`,
+        `"${s.startTime}"`,
+        `"${s.endTime}"`,
+        `"${s.effectiveFromUtc || ''}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-hr-shifts-${Date.now()}.csv`);
+    } else {
+      const headers = ['Request #', 'Employee Name', 'Employee #', 'Department', 'Leave Type', 'Start Date', 'End Date', 'Days Count', 'Reason', 'Status', 'Approver'];
+      const rows = this.filteredLeaves.map(r => [
+        `"${r.requestNumber}"`,
+        `"${r.employeeName.replace(/"/g, '""')}"`,
+        `"${r.employeeNumber || ''}"`,
+        `"${(r.departmentName || '').replace(/"/g, '""')}"`,
+        `"${r.leaveType}"`,
+        `"${r.startDateUtc || ''}"`,
+        `"${r.endDateUtc || ''}"`,
+        `"${r.daysCount}"`,
+        `"${(r.reason || '').replace(/"/g, '""')}"`,
+        `"${r.status}"`,
+        `"${(r.approverEmployeeName || 'Pending Review').replace(/"/g, '""')}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-hr-leaves-${Date.now()}.csv`);
+    }
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
+
