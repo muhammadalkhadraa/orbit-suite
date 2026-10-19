@@ -385,6 +385,14 @@ export interface AppNotification {
                     <span class="shortcut-desc">HR Attendance</span>
                     <div class="shortcut-keys"><kbd>G</kbd> <kbd>H</kbd></div>
                   </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/organization')">
+                    <span class="shortcut-desc">Organization</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>O</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/reports')">
+                    <span class="shortcut-desc">Reports & Dashboards</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>R</kbd></div>
+                  </div>
                   <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/finance')">
                     <span class="shortcut-desc">Finance</span>
                     <div class="shortcut-keys"><kbd>G</kbd> <kbd>F</kbd></div>
@@ -396,6 +404,10 @@ export interface AppNotification {
                   <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/audit')">
                     <span class="shortcut-desc">Audit Ledger</span>
                     <div class="shortcut-keys"><kbd>G</kbd> <kbd>A</kbd></div>
+                  </div>
+                  <div class="shortcut-row click-nav" (click)="jumpToRoute('/app/settings')">
+                    <span class="shortcut-desc">Workspace Settings</span>
+                    <div class="shortcut-keys"><kbd>G</kbd> <kbd>P</kbd></div>
                   </div>
                 </div>
               </div>
@@ -1573,6 +1585,9 @@ export class WorkspaceLayoutComponent {
         case 'f': event.preventDefault(); this.jumpToRoute('/app/finance'); break;
         case 'b': event.preventDefault(); this.jumpToRoute('/app/billing'); break;
         case 'a': event.preventDefault(); this.jumpToRoute('/app/audit'); break;
+        case 'r': event.preventDefault(); this.jumpToRoute('/app/reports'); break;
+        case 'o': event.preventDefault(); this.jumpToRoute('/app/organization'); break;
+        case 'p': event.preventDefault(); this.jumpToRoute('/app/settings'); break;
       }
     }
   }
@@ -1706,6 +1721,10 @@ export class WorkspaceLayoutComponent {
       { id: 'act-task', category: 'Action', title: 'Create Work Item', subtitle: 'Create a new task on the Kanban board', icon: '+', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/tasks']) },
       { id: 'act-emp', category: 'Action', title: 'Add Employee Profile', subtitle: 'Register personnel without mandating credentials', icon: '+', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/employees']) },
       { id: 'act-branch', category: 'Action', title: 'Add Branch Facility', subtitle: 'Provision an operating warehouse or office location', icon: '+', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/organization']) },
+      { id: 'act-invoice', category: 'Action', title: 'Create Invoice', subtitle: 'Issue customer sales invoice and dispatch billing statement', icon: '💵', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/finance']) },
+      { id: 'act-ticket', category: 'Action', title: 'Submit Support Ticket', subtitle: 'File customer incident or technical service request', icon: '💬', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/support']) },
+      { id: 'act-stock', category: 'Action', title: 'Record Stock Movement', subtitle: 'Log warehouse material transfer or ledger adjustment', icon: '📦', badgeClass: 'badge-amber', action: () => this.router.navigate(['/app/inventory']) },
+      { id: 'act-audit', category: 'Action', title: 'Inspect Audit Logs', subtitle: 'Review forensic tenant security and event trail', icon: '🛡️', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/audit']) },
       { id: 'act-role-owner', category: 'Action', title: 'Preview as Owner', subtitle: 'Switch active demo session to Company Owner', icon: '👑', badgeClass: 'badge-violet', action: () => this.switchRole('Owner') },
       { id: 'act-role-mgr', category: 'Action', title: 'Preview as Manager', subtitle: 'Switch active demo session to Department Manager', icon: '👔', badgeClass: 'badge-cyan', action: () => this.switchRole('Manager') },
       { id: 'act-role-emp', category: 'Action', title: 'Preview as Employee', subtitle: 'Switch active demo session to Individual Contributor', icon: '💼', badgeClass: 'badge-emerald', action: () => this.switchRole('Employee') },

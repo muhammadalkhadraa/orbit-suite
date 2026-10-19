@@ -43,7 +43,7 @@ import { AuthService } from '../../core/services/auth.service';
       </header>
 
       <!-- Hero Section -->
-      <section class="hero-section">
+      <section id="features" class="hero-section">
         <div class="hero-content">
           <div class="hero-badge">
             <span class="badge-dot"></span>
@@ -351,6 +351,64 @@ import { AuthService } from '../../core/services/auth.service';
             <button (click)="launchQuickDemo('Owner')" class="btn-primary w-full">
               <span>Launch Enterprise Demo</span>
             </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Security & Enterprise Compliance Section -->
+      <section id="security" class="section-container">
+        <div class="section-header">
+          <div class="badge badge-emerald">Zero-Trust Enterprise Security</div>
+          <h2 class="font-heading-2">Cryptographic Defense in Depth</h2>
+          <p class="font-body">Engineered from day zero to satisfy rigorous SOC 2 Type II, HIPAA, and ISO 27001 requirements.</p>
+        </div>
+
+        <div class="cards-grid">
+          <div class="glass-panel feature-card">
+            <div class="feature-icon icon-emerald">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3 class="font-heading-3">Hardware-Grade Encryption</h3>
+            <p class="font-body">Mandatory TLS 1.3 transport encryption with forward secrecy and AES-256 data volume encryption for all tenant databases and blob attachments.</p>
+          </div>
+
+          <div class="glass-panel feature-card">
+            <div class="feature-icon icon-cyan">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <h3 class="font-heading-3">Forensic Audit Trail</h3>
+            <p class="font-body">Append-only chronological audit logging recording operator identity, client IP, user-agent, entity state diffs, and cryptographic hash verification.</p>
+          </div>
+
+          <div class="glass-panel feature-card">
+            <div class="feature-icon icon-violet">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3 class="font-heading-3">Zero Cross-Tenant Leakage</h3>
+            <p class="font-body">Global EF Core query filters apply automatic where-clauses on compiled queries. Even raw queries execute in strict tenant context.</p>
+          </div>
+        </div>
+
+        <!-- Compliance Badges Ribbon -->
+        <div class="compliance-ribbon glass-panel">
+          <div class="compliance-item">
+            <span class="badge badge-emerald compliance-badge">SOC 2 Type II</span>
+            <span class="compliance-label">Audit-Ready Controls</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="compliance-item">
+            <span class="badge badge-cyan compliance-badge">ISO 27001</span>
+            <span class="compliance-label">ISMS Certified Architecture</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="compliance-item">
+            <span class="badge badge-indigo compliance-badge">HIPAA & GDPR</span>
+            <span class="compliance-label">Data Privacy Standards</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="compliance-item">
+            <span class="badge badge-amber compliance-badge">99.99% SLA</span>
+            <span class="compliance-label">High-Availability Clustering</span>
           </div>
         </div>
       </section>
@@ -677,6 +735,11 @@ import { AuthService } from '../../core/services/auth.service';
           background: rgba(6, 182, 212, 0.15);
           color: #67e8f9;
         }
+
+        &.icon-emerald {
+          background: rgba(16, 185, 129, 0.15);
+          color: #6ee7b7;
+        }
       }
 
       h3 {
@@ -877,6 +940,34 @@ import { AuthService } from '../../core/services/auth.service';
             color: $aurora-emerald;
             flex-shrink: 0;
           }
+        }
+      }
+    }
+
+    .compliance-ribbon {
+      margin-top: 3rem;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+
+      .compliance-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.375rem;
+
+        .compliance-badge {
+          font-weight: 700;
+          font-size: 0.8125rem;
+          letter-spacing: 0.05em;
+        }
+
+        .compliance-label {
+          font-size: 0.75rem;
+          color: $text-muted;
         }
       }
     }

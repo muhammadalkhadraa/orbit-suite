@@ -28,13 +28,19 @@ describe('MarketingLayoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render brand title, hero section, architecture cards, and 10 modules', () => {
+  it('should render brand title, hero section, architecture cards, 10 modules, and security showcase', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand-name')?.textContent).toContain('Orbit');
     expect(compiled.querySelector('.hero-title')?.textContent).toContain('One Unified Operating System');
-    expect(compiled.querySelectorAll('.feature-card').length).toBe(3);
+    expect(compiled.querySelector('#features')).toBeTruthy();
+    expect(compiled.querySelector('#architecture')).toBeTruthy();
+    expect(compiled.querySelector('#modules')).toBeTruthy();
+    expect(compiled.querySelector('#pricing')).toBeTruthy();
+    expect(compiled.querySelector('#security')).toBeTruthy();
+    expect(compiled.querySelectorAll('.feature-card').length).toBe(6);
     expect(compiled.querySelectorAll('.module-card').length).toBe(10);
     expect(compiled.querySelectorAll('.pricing-tier-card').length).toBe(3);
+    expect(compiled.querySelector('.compliance-ribbon')).toBeTruthy();
   });
 
   it('should toggle annual and monthly billing cycle', () => {

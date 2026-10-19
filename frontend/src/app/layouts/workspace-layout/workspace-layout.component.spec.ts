@@ -248,5 +248,39 @@ describe('WorkspaceLayoutComponent', () => {
     component.handleGlobalKeydown(tEvent);
     expect(tEvent.preventDefault).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/app/tasks']);
+
+    // Sequential 'g' then 'r' navigates to reports
+    component.handleGlobalKeydown(gEvent);
+    const rEvent = new KeyboardEvent('keydown', { key: 'r' });
+    spyOn(rEvent, 'preventDefault');
+    component.handleGlobalKeydown(rEvent);
+    expect(rEvent.preventDefault).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/app/reports']);
+
+    // Sequential 'g' then 'o' navigates to organization
+    component.handleGlobalKeydown(gEvent);
+    const oEvent = new KeyboardEvent('keydown', { key: 'o' });
+    spyOn(oEvent, 'preventDefault');
+    component.handleGlobalKeydown(oEvent);
+    expect(oEvent.preventDefault).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/app/organization']);
+
+    // Sequential 'g' then 'p' navigates to settings
+    component.handleGlobalKeydown(gEvent);
+    const pEvent = new KeyboardEvent('keydown', { key: 'p' });
+    spyOn(pEvent, 'preventDefault');
+    component.handleGlobalKeydown(pEvent);
+    expect(pEvent.preventDefault).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/app/settings']);
+  });
+
+  it('should include extended quick actions in command palette', () => {
+    const quickActions = component.paletteItems.filter(p => p.category === 'Action');
+    expect(quickActions.length).toBeGreaterThanOrEqual(10);
+    const actionTitles = quickActions.map(a => a.title);
+    expect(actionTitles).toContain('Create Invoice');
+    expect(actionTitles).toContain('Submit Support Ticket');
+    expect(actionTitles).toContain('Record Stock Movement');
+    expect(actionTitles).toContain('Inspect Audit Logs');
   });
 });
