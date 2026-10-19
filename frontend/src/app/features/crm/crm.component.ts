@@ -40,6 +40,11 @@ import { Customer, CustomerStatus, Employee, Deal, DealStage, DealMetrics } from
             </button>
           </div>
 
+          <button (click)="exportCrmToCsv()" class="btn-secondary" title="Export Current View to CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
+
           <button *ngIf="activeView === 'ACCOUNTS'" (click)="openCreateCustomerModal()" class="btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             <span>Add Customer</span>
@@ -1783,5 +1788,48 @@ export class CrmComponent implements OnInit {
     if (prob <= 30) return 'prob-low';
     if (prob <= 50) return 'prob-med';
     return 'prob-high';
+  }
+
+  public exportCrmToCsv(): void {
+    if (this.activeView === 'PIPELINE') {
+      const headers = ['Deal Title', 'Customer Name', 'Stage', 'Amount', 'Currency', 'Probability (%)', 'Weighted Value', 'Assigned Sales Rep', 'Expected Close Date', 'Lost Reason'];
+      const rows = this.filteredDeals.map(d => [
+        `"${d.title.replace(/"/g, '""')}"`,
+        `"${d.customerName.replace(/"/g, '""')}"`,
+        `"${d.stage}"`,
+        `"${d.amount}"`,
+        `"${d.currency || 'USD'}"`,
+        `"${d.probability}%"`,
+        `"${((d.amount * d.probability) / 100).toFixed(2)}"`,
+        `"${(d.assignedEmployeeName || 'Unassigned').replace(/"/g, '""')}"`,
+        `"${d.expectedCloseDateUtc || ''}"`,
+        `"${(d.lostReason || '').replace(/"/g, '""')}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-crm-pipeline-${Date.now()}.csv`);
+    } else {
+      const headers = ['Company Name', 'Contact Person', 'Email', 'Phone', 'Website', 'Industry', 'Status', 'Assigned Rep'];
+      const rows = this.filteredCustomers.map(c => [
+        `"${c.companyName.replace(/"/g, '""')}"`,
+        `"${(c.contactPerson || '').replace(/"/g, '""')}"`,
+        `"${(c.email || '').replace(/"/g, '""')}"`,
+        `"${(c.phone || '').replace(/"/g, '""')}"`,
+        `"${(c.website || '').replace(/"/g, '""')}"`,
+        `"${(c.industry || '').replace(/"/g, '""')}"`,
+        `"${this.formatStatus(c.status)}"`,
+        `"${(c.assignedEmployeeName || 'Unassigned').replace(/"/g, '""')}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-crm-accounts-${Date.now()}.csv`);
+    }
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }

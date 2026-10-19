@@ -179,6 +179,13 @@ import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriori
             Closed ({{ getCountByStatus('Closed') }})
           </button>
         </div>
+
+        <div class="controls-actions">
+          <button (click)="exportToCsv()" class="btn-secondary btn-export" title="Download Support Tickets as CSV">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
+        </div>
       </div>
 
       <!-- Support Tickets Table -->
@@ -654,6 +661,19 @@ import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriori
             color: #ffffff;
             font-weight: 600;
           }
+        }
+      }
+
+      .controls-actions {
+        display: flex;
+        align-items: center;
+
+        .btn-export {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.375rem;
+          font-size: 0.8125rem;
+          padding: 0.4rem 0.75rem;
         }
       }
     }
@@ -1322,5 +1342,30 @@ export class SupportComponent implements OnInit {
       case 'Employee': return 'badge-emerald';
       default: return 'badge-indigo';
     }
+  }
+
+  public exportToCsv(): void {
+    const headers = ['Ticket Number', 'Subject', 'Customer', 'Category', 'Priority', 'Status', 'Assigned Agent', 'Comments Count', 'Created Date'];
+    const rows = this.filteredTickets.map(t => [
+      `"${t.ticketNumber}"`,
+      `"${t.subject.replace(/"/g, '""')}"`,
+      `"${(t.customerName || '').replace(/"/g, '""')}"`,
+      `"${t.category}"`,
+      `"${t.priority}"`,
+      `"${t.status}"`,
+      `"${(t.assignedEmployeeName || 'Unassigned').replace(/"/g, '""')}"`,
+      `"${t.commentsCount || 0}"`,
+      `"${t.createdAtUtc || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orbit-support-tickets-${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }

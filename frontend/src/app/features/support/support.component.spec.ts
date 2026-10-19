@@ -3,10 +3,14 @@ import { SupportComponent } from './support.component';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { SupportTicket } from '../../core/models/models';
+import { AuthService } from '../../core/services/auth.service';
+import { ApiService } from '../../core/services/api.service';
+import { of } from 'rxjs';
 
 describe('SupportComponent', () => {
   let component: SupportComponent;
   let fixture: ComponentFixture<SupportComponent>;
+  let apiService: ApiService;
 
   const createDummyTicket = (overrides?: Partial<SupportTicket>): SupportTicket => ({
     id: 't-1',
@@ -31,11 +35,21 @@ describe('SupportComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SupportComponent, HttpClientTestingModule],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            activeTenant$: of({ id: 't-1', name: 'Apex Global', slug: 'apex', role: 'Owner' }),
+            currentRole: 'Owner'
+          }
+        }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(SupportComponent);
     component = fixture.componentInstance;
+    apiService = TestBed.inject(ApiService);
     fixture.detectChanges();
   });
 
@@ -87,6 +101,24 @@ describe('SupportComponent', () => {
     expect(component.filteredTickets.length).toBe(0);
   });
 
+  it('should filter tickets by priority and category', () => {
+    component.tickets = [
+      createDummyTicket({ id: 't-1', priority: 'Urgent', category: 'Technical' }),
+      createDummyTicket({ id: 't-2', priority: 'Low', category: 'Billing' })
+    ];
+
+    component.selectedPriority = 'Urgent';
+    component.applyFilters();
+    expect(component.filteredTickets.length).toBe(1);
+    expect(component.filteredTickets[0].id).toBe('t-1');
+
+    component.selectedPriority = 'ALL';
+    component.selectedCategory = 'Billing';
+    component.applyFilters();
+    expect(component.filteredTickets.length).toBe(1);
+    expect(component.filteredTickets[0].id).toBe('t-2');
+  });
+
   it('should open and close ticket detail modal', () => {
     const dummyTicket = createDummyTicket({
       id: 't-1',
@@ -101,5 +133,33 @@ describe('SupportComponent', () => {
     component.closeDetailModal();
     expect(component.showDetailModal).toBeFalse();
     expect(component.selectedTicket).toBeNull();
+  });
+
+  it('should prompt confirmation and delete ticket', () => {
+    spyOn(window, 'confirm').and.returnValue(true);
+    spyOn(apiService, 'deleteTicket').and.returnValue(of({ success: true, data: null }));
+    spyOn(component, 'loadTickets');
+    spyOn(component, 'loadMetrics');
+
+    component.deleteTicket('t-1');
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this support ticket?');
+    expect(apiService.deleteTicket).toHaveBeenCalledWith('t-1');
+    expect(component.loadTickets).toHaveBeenCalled();
+    expect(component.loadMetrics).toHaveBeenCalled();
+  });
+
+  it('should export filtered support tickets to CSV format', () => {
+    component.filteredTickets = [
+      createDummyTicket({
+        id: 't-1',
+        ticketNumber: 'TCK-1001',
+        subject: 'Database Failover',
+        customerName: 'Starlight Corp'
+      })
+    ];
+
+    spyOn(document, 'createElement').and.callThrough();
+    component.exportToCsv();
+    expect(document.createElement).toHaveBeenCalledWith('a');
   });
 });
