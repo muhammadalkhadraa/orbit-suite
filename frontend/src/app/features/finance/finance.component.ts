@@ -34,6 +34,10 @@ import {
           <p class="font-caption">Multi-currency customer billing, automated tax calculations, payment collection ledger, and accounts receivable tracking</p>
         </div>
         <div class="header-actions">
+          <button (click)="exportFinanceCsv()" class="btn-secondary" title="Export Invoices / Payments to CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
           <button *ngIf="canManageInvoices" (click)="openCreateModal()" class="btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             <span>Create New Invoice</span>
@@ -1600,4 +1604,56 @@ export class FinanceComponent implements OnInit {
       default: return 'badge-indigo';
     }
   }
+
+  public exportFinanceCsv(): void {
+    if (this.activeTab === 'payments') {
+      const headers = ['Receipt #', 'Invoice #', 'Customer Name', 'Amount Received', 'Payment Method', 'Date Received', 'Transaction Ref', 'Recorded By'];
+      const rows: string[][] = [];
+      this.invoices.forEach(inv => {
+        (inv.payments || []).forEach(p => {
+          rows.push([
+            `"${p.paymentNumber}"`,
+            `"${inv.invoiceNumber}"`,
+            `"${inv.customerName.replace(/"/g, '""')}"`,
+            `"${p.amount}"`,
+            `"${p.method}"`,
+            `"${p.paymentDateUtc || ''}"`,
+            `"${(p.referenceNumber || '').replace(/"/g, '""')}"`,
+            `"${(p.recordedByEmployeeName || 'Finance Officer').replace(/"/g, '""')}"`
+          ]);
+        });
+      });
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-finance-payments-${Date.now()}.csv`);
+    } else {
+      const headers = ['Invoice #', 'Customer Name', 'Customer Email', 'Deal Title', 'Issue Date', 'Due Date', 'Subtotal', 'Tax Amount', 'Total Amount', 'Amount Paid', 'Balance Due', 'Status', 'Is Overdue'];
+      const rows = this.filteredInvoices.map(inv => [
+        `"${inv.invoiceNumber}"`,
+        `"${inv.customerName.replace(/"/g, '""')}"`,
+        `"${(inv.customerEmail || '').replace(/"/g, '""')}"`,
+        `"${(inv.dealTitle || '').replace(/"/g, '""')}"`,
+        `"${inv.issueDateUtc || ''}"`,
+        `"${inv.dueDateUtc || ''}"`,
+        `"${inv.subtotal}"`,
+        `"${inv.taxAmount}"`,
+        `"${inv.totalAmount}"`,
+        `"${inv.amountPaid}"`,
+        `"${inv.balanceDue}"`,
+        `"${inv.status}"`,
+        `"${inv.isOverdue ? 'YES' : 'NO'}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-finance-invoices-${Date.now()}.csv`);
+    }
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
+
