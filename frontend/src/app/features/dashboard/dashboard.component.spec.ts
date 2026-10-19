@@ -56,5 +56,14 @@ describe('DashboardComponent', () => {
     expect(component.getRoleBadgeClass('Admin')).toBe('badge-indigo');
     expect(component.getRoleBadgeClass('Manager')).toBe('badge-cyan');
     expect(component.getRoleBadgeClass('Employee')).toBe('badge-emerald');
+    expect(component.getRoleBadgeClass('Guest')).toBe('badge-indigo');
+  });
+
+  it('should return appropriate badge class per task status', () => {
+    expect(component.getStatusBadge('Todo')).toBe('badge-indigo');
+    expect(component.getStatusBadge('InProgress')).toBe('badge-cyan');
+    expect(component.getStatusBadge('InReview')).toBe('badge-amber');
+    expect(component.getStatusBadge('Done')).toBe('badge-emerald');
+    expect(component.getStatusBadge('Unknown')).toBe('badge-indigo');
   });
 });

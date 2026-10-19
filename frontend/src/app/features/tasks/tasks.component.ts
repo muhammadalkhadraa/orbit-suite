@@ -103,8 +103,14 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
           </button>
         </div>
 
-        <div class="task-metrics">
-          <span class="metric-count">{{ getFilteredTasks().length }}</span> of {{ tasks.length }} tasks
+        <div class="toolbar-actions">
+          <button (click)="exportTasksCsv()" class="btn-secondary btn-export" title="Download Tasks as CSV">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
+          <div class="task-metrics">
+            <span class="metric-count">{{ getFilteredTasks().length }}</span> of {{ tasks.length }} tasks
+          </div>
         </div>
       </div>
 
@@ -455,6 +461,22 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
             color: #67e8f9;
             box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
           }
+        }
+      }
+
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        .btn-export {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0.375rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 500;
+          border-radius: $radius-sm;
         }
       }
 
@@ -839,5 +861,30 @@ export class TasksComponent implements OnInit {
       case 'Low': return 'badge-cyan';
       default: return 'badge-indigo';
     }
+  }
+
+  public exportTasksCsv(): void {
+    const headers = ['Task ID', 'Title', 'Priority', 'Status', 'Assignee', 'Department ID', 'Due Date', 'Created Date', 'Description'];
+    const rows = this.getFilteredTasks().map(t => [
+      `"${t.id}"`,
+      `"${(t.title || '').replace(/"/g, '""')}"`,
+      `"${t.priority}"`,
+      `"${t.status}"`,
+      `"${(t.assignedEmployeeName || 'Unassigned').replace(/"/g, '""')}"`,
+      `"${t.departmentId || 'None'}"`,
+      `"${t.dueDateUtc ? t.dueDateUtc.slice(0, 10) : 'None'}"`,
+      `"${t.createdAtUtc ? t.createdAtUtc.slice(0, 10) : ''}"`,
+      `"${(t.description || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orbit-tasks-${this.selectedPriority.toLowerCase()}-${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }

@@ -180,4 +180,36 @@ describe('TasksComponent', () => {
     expect(apiService.updateTaskStatus).toHaveBeenCalledWith('tsk-1', 'InProgress');
     expect(component.loadTasks).toHaveBeenCalled();
   });
+
+  it('should delete task when confirmed by user', () => {
+    spyOn(window, 'confirm').and.returnValue(true);
+    spyOn(apiService, 'deleteTask').and.returnValue(of({ success: true, data: null }));
+    spyOn(component, 'loadTasks');
+
+    component.deleteTask('tsk-99');
+
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this task?');
+    expect(apiService.deleteTask).toHaveBeenCalledWith('tsk-99');
+    expect(component.loadTasks).toHaveBeenCalled();
+  });
+
+  it('should not delete task if user cancels confirmation', () => {
+    spyOn(window, 'confirm').and.returnValue(false);
+    spyOn(apiService, 'deleteTask');
+
+    component.deleteTask('tsk-99');
+
+    expect(apiService.deleteTask).not.toHaveBeenCalled();
+  });
+
+  it('should export filtered tasks to CSV format', () => {
+    component.tasks = [
+      createDummyTask('tsk-1', 'Audit trail compliance', 'Todo', 'Urgent', 'Alex Vance')
+    ];
+    spyOn(document, 'createElement').and.callThrough();
+
+    component.exportTasksCsv();
+
+    expect(document.createElement).toHaveBeenCalledWith('a');
+  });
 });
