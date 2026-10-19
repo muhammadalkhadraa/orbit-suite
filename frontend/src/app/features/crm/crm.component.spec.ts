@@ -218,5 +218,57 @@ describe('CrmComponent', () => {
     component.exportCrmToCsv();
     expect(document.createElement).toHaveBeenCalledWith('a');
   });
+
+  it('should toggle and reset bulk import modal', () => {
+    component.openImportModal();
+    expect(component.showImportModal).toBeTrue();
+    expect(component.parsedRows.length).toBe(0);
+
+    component.closeImportModal();
+    expect(component.showImportModal).toBeFalse();
+  });
+
+  it('should download customer CSV template', () => {
+    spyOn(document, 'createElement').and.callThrough();
+    component.downloadTemplate();
+    expect(document.createElement).toHaveBeenCalledWith('a');
+  });
+
+  it('should parse valid CSV content and populate parsedRows', () => {
+    const csvData = 'CompanyName,ContactPerson,Email,Phone,Website,Industry,Status,Notes\nTest Corp,Jane Doe,jane@test.com,+1234567,https://test.com,Technology,Lead,Test Note';
+    component.parseCsvContent(csvData);
+
+    expect(component.importErrors.length).toBe(0);
+    expect(component.parsedRows.length).toBe(1);
+    expect(component.parsedRows[0].companyName).toBe('Test Corp');
+    expect(component.parsedRows[0].email).toBe('jane@test.com');
+  });
+
+  it('should flag errors when required columns are missing in CSV', () => {
+    const badCsv = 'SomeHeader,AnotherHeader\nVal1,Val2';
+    component.parseCsvContent(badCsv);
+
+    expect(component.importErrors.length).toBeGreaterThan(0);
+    expect(component.importErrors[0]).toContain('Missing required column');
+  });
+
+  it('should execute import and call createCustomer for each row', () => {
+    component.parsedRows = [
+      { companyName: 'Corp A', email: 'a@corp.com', contactPerson: 'Alice', phone: '123', status: 'Lead' },
+      { companyName: 'Corp B', email: 'b@corp.com', contactPerson: 'Bob', phone: '456', status: 'ActiveCustomer' }
+    ];
+
+    spyOn(apiService, 'createCustomer').and.returnValue(of({
+      success: true,
+      data: createDummyCustomer()
+    }));
+    spyOn(component, 'loadCustomers');
+
+    component.executeImport();
+
+    expect(apiService.createCustomer).toHaveBeenCalledTimes(2);
+    expect(component.loadCustomers).toHaveBeenCalled();
+    expect(component.showImportModal).toBeFalse();
+  });
 });
 

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Customer, CustomerStatus, Employee, Deal, DealStage, DealMetrics } from '../../core/models/models';
 
 @Component({
@@ -43,6 +44,11 @@ import { Customer, CustomerStatus, Employee, Deal, DealStage, DealMetrics } from
           <button (click)="exportCrmToCsv()" class="btn-secondary" title="Export Current View to CSV">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             <span>Export CSV</span>
+          </button>
+
+          <button *ngIf="activeView === 'ACCOUNTS'" (click)="openImportModal()" class="btn-secondary" title="Import Customers from CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Import CSV</span>
           </button>
 
           <button *ngIf="activeView === 'ACCOUNTS'" (click)="openCreateCustomerModal()" class="btn-primary">
@@ -651,6 +657,106 @@ import { Customer, CustomerStatus, Employee, Deal, DealStage, DealMetrics } from
           <div class="modal-footer">
             <button (click)="closeLostModal()" class="btn-secondary">Cancel</button>
             <button (click)="confirmMarkLost()" class="btn-sm btn-danger">Confirm Lost</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- MODAL: BULK CSV IMPORT CUSTOMERS               -->
+      <!-- ============================================== -->
+      <div *ngIf="showImportModal" class="modal-overlay">
+        <div class="modal-dialog glass-panel-elevated import-dialog" style="max-width: 640px;">
+          <div class="modal-header">
+            <div>
+              <span class="badge badge-indigo" style="margin-bottom: 0.25rem;">Data Migration Engine</span>
+              <h2 class="font-heading-3">Bulk Import Customer Accounts</h2>
+            </div>
+            <button (click)="closeImportModal()" class="modal-close-btn">&times;</button>
+          </div>
+
+          <div class="modal-body">
+            <!-- Step 1: Download Template -->
+            <div class="import-step-card glass-panel">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title font-body-bold">Download Standard CSV Template</div>
+                <p class="step-desc text-muted font-caption">Use our pre-configured CSV schema to ensure seamless column mapping and validation.</p>
+                <button type="button" (click)="downloadTemplate()" class="btn-ghost btn-sm" style="margin-top: 0.5rem;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Download customers-template.csv</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Select/Upload File -->
+            <div class="import-step-card glass-panel" style="margin-top: 1rem;">
+              <div class="step-num">2</div>
+              <div class="step-content" style="width: 100%;">
+                <div class="step-title font-body-bold">Upload CSV Callset</div>
+                <div class="file-dropzone" (click)="fileInput.click()">
+                  <input #fileInput type="file" accept=".csv" (change)="onFileSelected($event)" style="display: none;" />
+                  <div class="dropzone-icon">📁</div>
+                  <div class="dropzone-text" *ngIf="!importFileName">Click or drop a <strong>.csv</strong> file here</div>
+                  <div class="dropzone-text text-emerald" *ngIf="importFileName">Selected: <strong>{{ importFileName }}</strong></div>
+                  <span class="dropzone-sub text-muted">Supports RFC 4180 formatted CSV with commas or quotes</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Parse Results & Preview -->
+            <div *ngIf="importErrors.length > 0" class="import-errors-box" style="margin-top: 1rem;">
+              <div class="error-title text-rose font-body-bold">⚠️ Parsing / Validation Issues:</div>
+              <ul class="error-list">
+                <li *ngFor="let err of importErrors">{{ err }}</li>
+              </ul>
+            </div>
+
+            <div *ngIf="parsedRows.length > 0" class="preview-table-container glass-panel" style="margin-top: 1rem;">
+              <div class="preview-header">
+                <span class="font-body-bold">Validated Records Preview ({{ parsedRows.length }} rows)</span>
+                <span class="badge badge-emerald">Ready for Onboarding</span>
+              </div>
+              <div class="table-scroll" style="max-height: 160px; overflow-y: auto;">
+                <table class="preview-table">
+                  <thead>
+                    <tr>
+                      <th>Company</th>
+                      <th>Contact</th>
+                      <th>Email</th>
+                      <th>Industry</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of parsedRows.slice(0, 5)">
+                      <td class="font-body-bold">{{ row.companyName }}</td>
+                      <td>{{ row.contactPerson || '—' }}</td>
+                      <td>{{ row.email || '—' }}</td>
+                      <td>{{ row.industry || '—' }}</td>
+                      <td><span class="badge badge-indigo">{{ row.status || 'Lead' }}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Progress Bar during Import -->
+            <div *ngIf="isImporting" class="import-progress-box" style="margin-top: 1rem;">
+              <div class="progress-label">
+                <span>Importing accounts to database...</span>
+                <span>{{ importProgress }}%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar-fill" [style.width.%]="importProgress"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" (click)="closeImportModal()" class="btn-secondary" [disabled]="isImporting">Cancel</button>
+            <button type="button" (click)="executeImport()" class="btn-primary" [disabled]="parsedRows.length === 0 || isImporting || importErrors.length > 0">
+              {{ isImporting ? 'Importing...' : 'Execute Import (' + parsedRows.length + ')' }}
+            </button>
           </div>
         </div>
       </div>
@@ -1337,11 +1443,137 @@ import { Customer, CustomerStatus, Employee, Deal, DealStage, DealMetrics } from
       gap: 0.75rem;
       margin-top: 1.5rem;
     }
+
+    /* Bulk Import Styles */
+    .import-step-card {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: $radius-md;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid $border-glass;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, $aurora-indigo, $aurora-violet);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .file-dropzone {
+      margin-top: 0.75rem;
+      padding: 1.5rem;
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: $radius-md;
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        border-color: $aurora-indigo;
+        background: rgba(99, 102, 241, 0.05);
+      }
+
+      .dropzone-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .dropzone-text {
+        font-size: 0.9rem;
+      }
+
+      .dropzone-sub {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+      }
+    }
+
+    .import-errors-box {
+      padding: 0.75rem 1rem;
+      border-radius: $radius-md;
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+
+      .error-list {
+        margin: 0.25rem 0 0 1rem;
+        font-size: 0.8rem;
+        color: #fca5a5;
+      }
+    }
+
+    .preview-table-container {
+      padding: 0.75rem;
+      border-radius: $radius-md;
+
+      .preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+      }
+
+      .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+
+        th {
+          padding: 0.5rem;
+          text-align: left;
+          background: rgba(255, 255, 255, 0.05);
+          color: $text-muted;
+          border-bottom: 1px solid $border-glass;
+        }
+
+        td {
+          padding: 0.5rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+          color: $text-primary;
+        }
+      }
+    }
+
+    .import-progress-box {
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        margin-bottom: 0.35rem;
+        color: $text-muted;
+      }
+
+      .progress-track {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+
+        .progress-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, $aurora-indigo, $aurora-emerald);
+          transition: width 0.3s ease;
+        }
+      }
+    }
   `]
 })
 export class CrmComponent implements OnInit {
   private apiService = inject(ApiService);
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
 
   public activeTenant$ = this.authService.activeTenant$;
   public activeView: 'PIPELINE' | 'ACCOUNTS' = 'PIPELINE';
@@ -1357,6 +1589,14 @@ export class CrmComponent implements OnInit {
   public showCustomerModal = false;
   public isEditingCustomer = false;
   public editingCustomerId: string | null = null;
+
+  // Bulk CSV Import State
+  public showImportModal = false;
+  public importFileName = '';
+  public parsedRows: any[] = [];
+  public importErrors: string[] = [];
+  public isImporting = false;
+  public importProgress = 0;
 
   public formCompanyName = '';
   public formContactPerson = '';
@@ -1831,5 +2071,141 @@ export class CrmComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  // --- BULK CSV IMPORT ENGINE ---
+  public openImportModal(): void {
+    this.showImportModal = true;
+    this.resetImport();
+  }
+
+  public closeImportModal(): void {
+    this.showImportModal = false;
+    this.resetImport();
+  }
+
+  public resetImport(): void {
+    this.importFileName = '';
+    this.parsedRows = [];
+    this.importErrors = [];
+    this.isImporting = false;
+    this.importProgress = 0;
+  }
+
+  public downloadTemplate(): void {
+    const header = 'CompanyName,ContactPerson,Email,Phone,Website,Industry,Status,Notes\n';
+    const sample = 'Acme Global,John Doe,john@acme.com,+1-555-0199,https://acme.com,Manufacturing,ActiveCustomer,Enterprise prospect\nBeta Systems,Sarah Vance,sarah@betasystems.com,+1-555-0188,https://betasystems.com,Technology,Lead,Inbound inquiry';
+    this.downloadCsvFile(header + sample, 'customers-template.csv');
+  }
+
+  public onFileSelected(event: any): void {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    this.importFileName = file.name;
+    this.importErrors = [];
+    this.parsedRows = [];
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      this.parseCsvContent(text);
+    };
+    reader.readAsText(file);
+  }
+
+  public parseCsvContent(text: string): void {
+    if (!text || !text.trim()) {
+      this.importErrors.push('The selected CSV file is empty.');
+      return;
+    }
+
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) {
+      this.importErrors.push('CSV must contain a header row and at least one data record.');
+      return;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+    const compIdx = headers.findIndex(h => h.includes('company'));
+    const emailIdx = headers.findIndex(h => h.includes('email'));
+    const contactIdx = headers.findIndex(h => h.includes('contact'));
+    const phoneIdx = headers.findIndex(h => h.includes('phone'));
+    const webIdx = headers.findIndex(h => h.includes('website') || h.includes('url'));
+    const indIdx = headers.findIndex(h => h.includes('industry'));
+    const statusIdx = headers.findIndex(h => h.includes('status'));
+    const notesIdx = headers.findIndex(h => h.includes('note'));
+
+    if (compIdx === -1) {
+      this.importErrors.push('Missing required column: CompanyName');
+      return;
+    }
+
+    const parsed: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+      if (row.length === 0 || !row[compIdx]) continue;
+
+      parsed.push({
+        companyName: row[compIdx],
+        email: emailIdx !== -1 ? row[emailIdx] : '',
+        contactPerson: contactIdx !== -1 ? row[contactIdx] : '',
+        phone: phoneIdx !== -1 ? row[phoneIdx] : '',
+        website: webIdx !== -1 ? row[webIdx] : '',
+        industry: indIdx !== -1 ? row[indIdx] : 'Technology',
+        status: (statusIdx !== -1 && row[statusIdx]) ? row[statusIdx] : 'Lead',
+        notes: notesIdx !== -1 ? row[notesIdx] : ''
+      });
+    }
+
+    if (parsed.length === 0) {
+      this.importErrors.push('No valid customer records could be extracted from CSV.');
+    } else {
+      this.parsedRows = parsed;
+    }
+  }
+
+  public executeImport(): void {
+    if (this.parsedRows.length === 0 || this.isImporting) return;
+    this.isImporting = true;
+    this.importProgress = 10;
+
+    let completed = 0;
+    const total = this.parsedRows.length;
+
+    const processNext = (index: number) => {
+      if (index >= total) {
+        this.isImporting = false;
+        this.importProgress = 100;
+        this.showImportModal = false;
+        this.toastService.success('Import Complete', `Successfully imported ${completed} customer accounts.`);
+        this.loadCustomers();
+        return;
+      }
+
+      const row = this.parsedRows[index];
+      this.apiService.createCustomer({
+        companyName: row.companyName,
+        contactPerson: row.contactPerson,
+        email: row.email,
+        phone: row.phone,
+        website: row.website,
+        industry: row.industry,
+        status: (row.status as CustomerStatus) || 'Lead',
+        notes: row.notes
+      }).subscribe({
+        next: () => {
+          completed++;
+          this.importProgress = Math.round((completed / total) * 100);
+          processNext(index + 1);
+        },
+        error: () => {
+          this.importProgress = Math.round(((index + 1) / total) * 100);
+          processNext(index + 1);
+        }
+      });
+    };
+
+    processNext(0);
   }
 }

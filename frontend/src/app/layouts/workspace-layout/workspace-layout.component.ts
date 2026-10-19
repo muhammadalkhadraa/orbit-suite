@@ -1,9 +1,12 @@
-import { Component, HostListener, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, HostListener, inject, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
+import { NetworkService } from '../../core/services/network.service';
+import { IdleTimerService } from '../../core/services/idle-timer.service';
 import { TenantRole } from '../../core/models/models';
 
 export interface CommandPaletteItem {
@@ -166,6 +169,20 @@ export interface AppNotification {
 
       <!-- Main Shell Area -->
       <div class="workspace-main">
+        <!-- Offline Connectivity Warning Banner -->
+        <div *ngIf="(isOnline$ | async) === false" class="offline-banner">
+          <div class="banner-content">
+            <span class="pulse-dot"></span>
+            <span class="banner-text">
+              <strong>Network Offline:</strong> Orbit Suite is operating with cached assets. Data will synchronize automatically when connection is restored.
+            </span>
+          </div>
+          <button (click)="checkConnection()" class="btn-banner-retry">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>Check Connection</span>
+          </button>
+        </div>
+
         <!-- Top App Header -->
         <header class="workspace-header">
           <div class="header-left">
@@ -255,7 +272,7 @@ export interface AppNotification {
             </div>
 
             <!-- User Menu -->
-            <div class="user-profile-menu">
+            <div class="user-profile-menu clickable" (click)="toggleProfileDrawer()" title="View Profile & UI Preferences">
               <div class="user-avatar">
                 {{ getUserInitials() }}
               </div>
@@ -263,7 +280,7 @@ export interface AppNotification {
                 <span class="user-name">{{ (currentUser$ | async)?.fullName || 'Authorized User' }}</span>
                 <span class="user-email">{{ (currentUser$ | async)?.email }}</span>
               </div>
-              <button (click)="logout()" class="btn-logout" title="Sign out">
+              <button (click)="logout(); $event.stopPropagation()" class="btn-logout" title="Sign out">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               </button>
             </div>
@@ -429,6 +446,100 @@ export interface AppNotification {
               <div class="toast-message-text" *ngIf="toast.message">{{ toast.message }}</div>
             </div>
             <button class="toast-close-btn" (click)="dismissToast(toast.id)">×</button>
+          </div>
+        </div>
+
+        <!-- Session Inactivity Guard Modal Overlay -->
+        <div *ngIf="isIdleWarning$ | async" class="idle-modal-backdrop">
+          <div class="idle-modal glass-panel-elevated" (click)="$event.stopPropagation()">
+            <div class="idle-icon-wrap">
+              <div class="idle-pulse-ring"></div>
+              <div class="idle-timer-number">{{ idleCountdown$ | async }}</div>
+            </div>
+            <h2 class="font-heading-3" style="margin-top: 1rem;">Session Inactivity Warning</h2>
+            <p class="idle-desc text-muted">
+              To protect organization data integrity, your authenticated session will automatically terminate in <strong>{{ idleCountdown$ | async }} seconds</strong>.
+            </p>
+            <div class="idle-actions">
+              <button type="button" (click)="staySignedIn()" class="btn-primary">
+                <span>Keep Session Active</span>
+              </button>
+              <button type="button" (click)="logout()" class="btn-secondary">
+                <span>Sign Out Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide-out User Profile & Quick Preferences Drawer -->
+        <div *ngIf="profileDrawerOpen" class="profile-drawer-backdrop" (click)="closeProfileDrawer()">
+          <div class="profile-drawer glass-panel-elevated" (click)="$event.stopPropagation()">
+            <div class="drawer-header">
+              <div class="user-drawer-badge">
+                <div class="user-avatar-lg">{{ getUserInitials() }}</div>
+                <div>
+                  <h3 class="font-heading-3">{{ (currentUser$ | async)?.fullName || 'Authorized User' }}</h3>
+                  <span class="text-muted font-caption">{{ (currentUser$ | async)?.email }}</span>
+                </div>
+              </div>
+              <button class="close-btn" (click)="closeProfileDrawer()">✕</button>
+            </div>
+
+            <div class="drawer-body">
+              <!-- Active Workspace Context -->
+              <div class="drawer-card glass-panel">
+                <span class="card-label text-muted">CURRENT WORKSPACE</span>
+                <div class="font-body-bold" *ngIf="activeTenant$ | async as tenant">{{ tenant.name }}</div>
+                <div style="margin-top: 0.5rem;" *ngIf="activeTenant$ | async as tenant">
+                  <span class="badge" [ngClass]="getRoleBadgeClass(tenant.role)">Role: {{ tenant.role }}</span>
+                </div>
+              </div>
+
+              <!-- Quick UI Preferences -->
+              <div class="drawer-section">
+                <span class="section-title">INTERFACE PREFERENCES</span>
+                
+                <div class="preference-row">
+                  <div>
+                    <div class="pref-label font-body-bold">Audio Alerts</div>
+                    <div class="pref-sub text-muted">Audible chime on system notifications</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" [(ngModel)]="prefAudioEnabled" (change)="toggleAudioPref()" />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="preference-row">
+                  <div>
+                    <div class="pref-label font-body-bold">Compact Table Rows</div>
+                    <div class="pref-sub text-muted">High-density data spacing for power users</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" [(ngModel)]="prefCompactView" (change)="toggleCompactPref()" />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Session Security Status -->
+              <div class="drawer-section">
+                <span class="section-title">COMPLIANCE & INTEGRITY</span>
+                <div class="security-chip">
+                  <span class="chip-status-dot"></span>
+                  <span>SOC2 Idle Inactivity Guard: Active</span>
+                </div>
+                <div class="security-meta text-muted" style="font-size: 0.75rem; margin-top: 0.5rem;">
+                  Auto-signout safeguards confidential client data on unattended devices.
+                </div>
+              </div>
+            </div>
+
+            <div class="drawer-footer">
+              <button (click)="logout()" class="btn-danger-outline" style="width: 100%;">
+                Sign Out of Orbit Suite
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1438,12 +1549,337 @@ export interface AppNotification {
         font-family: inherit;
       }
     }
+
+    /* Offline Warning Banner */
+    .offline-banner {
+      background: linear-gradient(90deg, #f59e0b, #d97706);
+      color: #0f172a;
+      padding: 0.65rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.85rem;
+      z-index: 50;
+
+      .banner-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .pulse-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #b45309;
+        box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.7);
+        animation: pulse 1.5s infinite;
+      }
+
+      .btn-banner-retry {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: $radius-sm;
+        background: rgba(15, 23, 42, 0.2);
+        border: 1px solid rgba(15, 23, 42, 0.4);
+        color: #0f172a;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background $transition-fast;
+
+        &:hover {
+          background: rgba(15, 23, 42, 0.35);
+        }
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 8px rgba(180, 83, 9, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(180, 83, 9, 0);
+      }
+    }
+
+    .clickable {
+      cursor: pointer;
+      transition: background $transition-fast;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    /* Idle Inactivity Modal */
+    .idle-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .idle-modal {
+      width: 100%;
+      max-width: 440px;
+      padding: 2.25rem 2rem;
+      text-align: center;
+      border-radius: $radius-lg;
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      box-shadow: 0 25px 50px -12px rgba(244, 63, 94, 0.25);
+    }
+
+    .idle-icon-wrap {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .idle-pulse-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 3px solid #f43f5e;
+      animation: idleRing 1.5s infinite;
+    }
+
+    .idle-timer-number {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #f43f5e;
+      font-family: monospace;
+    }
+
+    @keyframes idleRing {
+      0% { transform: scale(0.9); opacity: 1; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    .idle-desc {
+      font-size: 0.9rem;
+      margin: 0.75rem 0 1.5rem;
+      line-height: 1.5;
+    }
+
+    .idle-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    /* Profile Drawer */
+    .profile-drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 80;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .profile-drawer {
+      width: 100%;
+      max-width: 380px;
+      height: 100vh;
+      background: rgba(11, 15, 25, 0.97);
+      border-left: 1px solid $border-glass;
+      display: flex;
+      flex-direction: column;
+      animation: slideInRight 0.25s ease-out;
+    }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+
+    .drawer-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid $border-glass;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .user-drawer-badge {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-avatar-lg {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, $aurora-indigo, $aurora-violet);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drawer-body {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .drawer-card {
+      padding: 1rem;
+      border-radius: $radius-md;
+
+      .card-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+    }
+
+    .drawer-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+
+      .section-title {
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        color: $text-muted;
+        font-weight: 700;
+      }
+    }
+
+    .preference-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid $border-glass;
+      border-radius: $radius-md;
+
+      .pref-label {
+        font-size: 0.85rem;
+      }
+
+      .pref-sub {
+        font-size: 0.75rem;
+      }
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+
+      input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+
+        &:checked + .slider {
+          background-color: $aurora-emerald;
+        }
+
+        &:checked + .slider:before {
+          transform: translateX(20px);
+        }
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.2);
+        transition: $transition-fast;
+        border-radius: 24px;
+
+        &:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: $transition-fast;
+          border-radius: 50%;
+        }
+      }
+    }
+
+    .security-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: $radius-sm;
+      font-size: 0.8rem;
+      color: #34d399;
+
+      .chip-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+      }
+    }
+
+    .drawer-footer {
+      padding: 1.5rem;
+      border-top: 1px solid $border-glass;
+    }
+
+    .btn-danger-outline {
+      padding: 0.75rem 1rem;
+      border-radius: $radius-md;
+      background: rgba(244, 63, 94, 0.08);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #f87171;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: rgba(244, 63, 94, 0.2);
+        color: #ffffff;
+      }
+    }
   `]
 })
-export class WorkspaceLayoutComponent {
-  private authService = inject(AuthService);
-  private toastService = inject(ToastService);
-  private router = inject(Router);
+export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
+  public authService = inject(AuthService);
+  public toastService = inject(ToastService);
+  public networkService = inject(NetworkService);
+  public idleTimerService = inject(IdleTimerService);
+  public router = inject(Router);
 
   @ViewChild('paletteInput') paletteInputElement?: ElementRef<HTMLInputElement>;
 
@@ -1452,6 +1888,19 @@ export class WorkspaceLayoutComponent {
   public activeTenant$ = this.authService.activeTenant$;
   public availableTenants$ = this.authService.availableTenants$;
   public toasts$ = this.toastService.toasts$;
+
+  // Network & Idle Guard State
+  public isOnline$ = this.networkService.isOnline$;
+  public isIdleWarning$ = this.idleTimerService.isWarning$;
+  public idleCountdown$ = this.idleTimerService.countdownSeconds$;
+
+  // User Profile & Preferences Drawer State
+  public profileDrawerOpen = false;
+  public prefAudioEnabled = false;
+  public prefCompactView = false;
+
+  private subscriptions: Subscription = new Subscription();
+  private wasOffline = false;
 
   // Command Palette State
   public commandPaletteOpen = false;
@@ -1529,6 +1978,31 @@ export class WorkspaceLayoutComponent {
     this.initializePaletteItems();
   }
 
+  public ngOnInit(): void {
+    this.idleTimerService.startMonitoring();
+
+    this.subscriptions.add(
+      this.idleTimerService.expired$.subscribe(() => {
+        this.toastService.warning('Session Timed Out', 'Your session was ended due to inactivity.');
+        this.logout();
+      })
+    );
+
+    this.subscriptions.add(
+      this.networkService.isOnline$.subscribe(online => {
+        if (this.wasOffline && online) {
+          this.toastService.success('Connection Restored', 'Re-synchronized with Orbit Cloud.');
+        }
+        this.wasOffline = !online;
+      })
+    );
+  }
+
+  public ngOnDestroy(): void {
+    this.idleTimerService.stopMonitoring();
+    this.subscriptions.unsubscribe();
+  }
+
   @HostListener('window:keydown', ['$event'])
   public handleGlobalKeydown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
@@ -1549,6 +2023,8 @@ export class WorkspaceLayoutComponent {
         this.closeShortcutsModal();
       } else if (this.notificationsOpen) {
         this.closeNotifications();
+      } else if (this.profileDrawerOpen) {
+        this.closeProfileDrawer();
       }
       return;
     }
@@ -1784,5 +2260,29 @@ export class WorkspaceLayoutComponent {
 
   public dismissToast(id: string): void {
     this.toastService.remove(id);
+  }
+
+  public checkConnection(): void {
+    this.networkService.checkConnection();
+  }
+
+  public staySignedIn(): void {
+    this.idleTimerService.staySignedIn();
+  }
+
+  public toggleProfileDrawer(): void {
+    this.profileDrawerOpen = !this.profileDrawerOpen;
+  }
+
+  public closeProfileDrawer(): void {
+    this.profileDrawerOpen = false;
+  }
+
+  public toggleAudioPref(): void {
+    this.toastService.info('Preferences Updated', this.prefAudioEnabled ? 'Audio alerts enabled' : 'Audio alerts disabled');
+  }
+
+  public toggleCompactPref(): void {
+    this.toastService.info('Preferences Updated', this.prefCompactView ? 'Compact view enabled' : 'Default view restored');
   }
 }

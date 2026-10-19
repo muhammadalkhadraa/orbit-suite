@@ -657,6 +657,10 @@ import {
 
           <div class="modal-actions" style="margin-top: 2rem;">
             <button type="button" (click)="showPreviewModal = false" class="btn-ghost">Close</button>
+            <button type="button" (click)="printInvoice()" class="btn-secondary" title="Print Invoice or Export to PDF">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              <span>Print / PDF</span>
+            </button>
             <button
               *ngIf="canManageInvoices && previewInvoice.status === 'Draft'"
               type="button"
@@ -1298,6 +1302,90 @@ import {
     .text-amber { color: #fbbf24; }
     .text-rose { color: #f43f5e; }
     .text-muted { color: #94a3b8; }
+
+    /* Professional Print / PDF Export Styling */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      .modal-backdrop,
+      .modal-card.invoice-sheet,
+      .modal-card.invoice-sheet * {
+        visibility: visible !important;
+      }
+      .modal-backdrop {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        background: #ffffff !important;
+        backdrop-filter: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+      .modal-card.invoice-sheet {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 2rem !important;
+        border-radius: 0 !important;
+      }
+      .sheet-header .sheet-logo {
+        color: #0f172a !important;
+        font-size: 1.5rem !important;
+        font-weight: 800 !important;
+      }
+      .sheet-header .inv-number {
+        color: #0f172a !important;
+      }
+      .text-muted {
+        color: #475569 !important;
+      }
+      .sheet-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 1.5rem 0 !important;
+      }
+      .sheet-table th {
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+        padding: 0.75rem !important;
+      }
+      .sheet-table td {
+        border-bottom: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
+        padding: 0.75rem !important;
+      }
+      .sheet-totals .total-line {
+        color: #0f172a !important;
+      }
+      .sheet-totals .text-indigo,
+      .sheet-totals .text-emerald,
+      .sheet-totals .text-amber {
+        color: #0f172a !important;
+        font-weight: bold !important;
+      }
+      .sheet-notes {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #334155 !important;
+      }
+      .modal-actions,
+      .btn-ghost,
+      .btn-primary,
+      .btn-secondary {
+        display: none !important;
+      }
+    }
   `]
 })
 export class FinanceComponent implements OnInit {
@@ -1643,6 +1731,10 @@ export class FinanceComponent implements OnInit {
       ]);
       this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-finance-invoices-${Date.now()}.csv`);
     }
+  }
+
+  public printInvoice(): void {
+    window.print();
   }
 
   private downloadCsvFile(csvContent: string, filename: string): void {

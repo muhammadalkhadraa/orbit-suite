@@ -283,4 +283,47 @@ describe('WorkspaceLayoutComponent', () => {
     expect(actionTitles).toContain('Record Stock Movement');
     expect(actionTitles).toContain('Inspect Audit Logs');
   });
+
+  it('should toggle and close user profile drawer', () => {
+    expect(component.profileDrawerOpen).toBeFalse();
+
+    component.toggleProfileDrawer();
+    expect(component.profileDrawerOpen).toBeTrue();
+
+    component.closeProfileDrawer();
+    expect(component.profileDrawerOpen).toBeFalse();
+  });
+
+  it('should close profile drawer when Escape key is pressed', () => {
+    component.profileDrawerOpen = true;
+
+    const escEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+    component.handleGlobalKeydown(escEvent);
+    expect(component.profileDrawerOpen).toBeFalse();
+  });
+
+  it('should delegate checkConnection to networkService', () => {
+    spyOn(component.networkService, 'checkConnection');
+    component.checkConnection();
+    expect(component.networkService.checkConnection).toHaveBeenCalled();
+  });
+
+  it('should delegate staySignedIn to idleTimerService', () => {
+    spyOn(component.idleTimerService, 'staySignedIn');
+    component.staySignedIn();
+    expect(component.idleTimerService.staySignedIn).toHaveBeenCalled();
+  });
+
+  it('should toggle audio and compact preferences with toast notifications', () => {
+    const toastService = (component as any).toastService;
+    spyOn(toastService, 'info');
+
+    component.prefAudioEnabled = true;
+    component.toggleAudioPref();
+    expect(toastService.info).toHaveBeenCalledWith('Preferences Updated', 'Audio alerts enabled');
+
+    component.prefCompactView = true;
+    component.toggleCompactPref();
+    expect(toastService.info).toHaveBeenCalledWith('Preferences Updated', 'Compact view enabled');
+  });
 });

@@ -170,5 +170,11 @@ describe('FinanceComponent', () => {
     component.exportFinanceCsv();
     expect(document.createElement).toHaveBeenCalledWith('a');
   });
+
+  it('should trigger window.print when printInvoice is called', () => {
+    spyOn(window, 'print');
+    component.printInvoice();
+    expect(window.print).toHaveBeenCalled();
+  });
 });
 
