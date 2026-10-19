@@ -53,6 +53,61 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
         </div>
       </div>
 
+      <!-- Tasks Filter & Priority Toolbar -->
+      <div class="tasks-toolbar glass-panel">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input 
+            type="text" 
+            [(ngModel)]="searchQuery" 
+            placeholder="Search tasks by title, description, or assignee..." 
+          />
+        </div>
+
+        <div class="priority-chips">
+          <span class="chips-label">Priority:</span>
+          <button 
+            type="button" 
+            class="chip-btn" 
+            [class.active]="selectedPriority === 'All'" 
+            (click)="setPriorityFilter('All')">
+            All
+          </button>
+          <button 
+            type="button" 
+            class="chip-btn chip-urgent" 
+            [class.active]="selectedPriority === 'Urgent'" 
+            (click)="setPriorityFilter('Urgent')">
+            Urgent
+          </button>
+          <button 
+            type="button" 
+            class="chip-btn chip-high" 
+            [class.active]="selectedPriority === 'High'" 
+            (click)="setPriorityFilter('High')">
+            High
+          </button>
+          <button 
+            type="button" 
+            class="chip-btn chip-medium" 
+            [class.active]="selectedPriority === 'Medium'" 
+            (click)="setPriorityFilter('Medium')">
+            Medium
+          </button>
+          <button 
+            type="button" 
+            class="chip-btn chip-low" 
+            [class.active]="selectedPriority === 'Low'" 
+            (click)="setPriorityFilter('Low')">
+            Low
+          </button>
+        </div>
+
+        <div class="task-metrics">
+          <span class="metric-count">{{ getFilteredTasks().length }}</span> of {{ tasks.length }} tasks
+        </div>
+      </div>
+
       <!-- Kanban Board Lanes -->
       <div class="kanban-board">
         <!-- Lane: Todo -->
@@ -303,6 +358,117 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
       }
     }
 
+    // Tasks Toolbar
+    .tasks-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1.25rem;
+      flex-wrap: wrap;
+
+      .search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 220px;
+        max-width: 340px;
+        color: $text-muted;
+
+        input {
+          background: none;
+          border: none;
+          color: #ffffff;
+          font-size: 0.875rem;
+          width: 100%;
+          outline: none;
+
+          &::placeholder {
+            color: $text-muted;
+          }
+        }
+      }
+
+      .priority-chips {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+
+        .chips-label {
+          font-size: 0.75rem;
+          color: $text-muted;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-right: 0.25rem;
+        }
+
+        .chip-btn {
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid $border-glass;
+          color: $text-secondary;
+          border-radius: 9999px;
+          padding: 0.25rem 0.75rem;
+          font-size: 0.75rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all $transition-fast;
+
+          &:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+          }
+
+          &.active {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: $aurora-indigo;
+            color: #a5b4fc;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+          }
+
+          &.chip-urgent.active {
+            background: rgba(244, 63, 94, 0.25);
+            border-color: $aurora-rose;
+            color: #fda4af;
+            box-shadow: 0 0 10px rgba(244, 63, 94, 0.3);
+          }
+
+          &.chip-high.active {
+            background: rgba(245, 158, 11, 0.25);
+            border-color: $aurora-amber;
+            color: #fcd34d;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+          }
+
+          &.chip-medium.active {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: $aurora-indigo;
+            color: #a5b4fc;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+          }
+
+          &.chip-low.active {
+            background: rgba(6, 182, 212, 0.25);
+            border-color: $aurora-cyan;
+            color: #67e8f9;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+          }
+        }
+      }
+
+      .task-metrics {
+        font-size: 0.8125rem;
+        color: $text-muted;
+
+        .metric-count {
+          color: #ffffff;
+          font-weight: 600;
+        }
+      }
+    }
+
     // Kanban Board
     .kanban-board {
       display: grid;
@@ -548,6 +714,8 @@ export class TasksComponent implements OnInit {
   public tasks: TaskItem[] = [];
   public employees: Employee[] = [];
   public departments: Department[] = [];
+  public searchQuery = '';
+  public selectedPriority: 'All' | TaskPriority = 'All';
 
   public showModal = false;
   public newTaskTitle = '';
@@ -579,8 +747,31 @@ export class TasksComponent implements OnInit {
     });
   }
 
+  public getFilteredTasks(): TaskItem[] {
+    let result = [...this.tasks];
+
+    if (this.selectedPriority !== 'All') {
+      result = result.filter(t => t.priority === this.selectedPriority);
+    }
+
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      result = result.filter(t => 
+        t.title.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.assignedEmployeeName && t.assignedEmployeeName.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }
+
   public getTasksByStatus(status: TaskStatus): TaskItem[] {
-    return this.tasks.filter(t => t.status === status);
+    return this.getFilteredTasks().filter(t => t.status === status);
+  }
+
+  public setPriorityFilter(priority: 'All' | TaskPriority): void {
+    this.selectedPriority = priority;
   }
 
   public openCreateModal(): void {

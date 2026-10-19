@@ -939,6 +939,34 @@ export class ApiService {
     );
   }
 
+  public updateEmployee(id: string, emp: Partial<Employee>): Observable<ApiResponse<Employee>> {
+    return this.http.put<ApiResponse<Employee>>(`${this.baseUrl}/employees/${id}`, emp).pipe(
+      catchError(() => {
+        const index = this.mockEmployees.findIndex(e => e.id === id);
+        if (index !== -1) {
+          const current = this.mockEmployees[index];
+          const updated: Employee = {
+            ...current,
+            ...emp,
+            fullName: `${emp.firstName ?? current.firstName} ${emp.lastName ?? current.lastName}`.trim()
+          };
+          this.mockEmployees[index] = updated;
+          return of({ success: true, data: updated, message: 'Employee profile updated successfully.' });
+        }
+        return of({ success: false, data: {} as Employee, message: 'Employee not found.' });
+      })
+    );
+  }
+
+  public deleteEmployee(id: string): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/employees/${id}`).pipe(
+      catchError(() => {
+        this.mockEmployees = this.mockEmployees.filter(e => e.id !== id);
+        return of({ success: true, data: null, message: 'Employee profile deleted successfully.' });
+      })
+    );
+  }
+
   // 5. Tasks (Scoped by Current User & Role)
   public getTasks(): Observable<ApiResponse<PagedResponse<TaskItem>>> {
     return this.http.get<ApiResponse<PagedResponse<TaskItem>>>(`${this.baseUrl}/tasks`).pipe(

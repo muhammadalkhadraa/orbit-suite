@@ -3,6 +3,8 @@ import { BillingComponent, PlanTier } from './billing.component';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
+import { of } from 'rxjs';
 
 describe('BillingComponent', () => {
   let component: BillingComponent;
@@ -12,7 +14,16 @@ describe('BillingComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [BillingComponent, HttpClientTestingModule],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            activeTenant$: of({ id: 't-1', name: 'Apex Global', slug: 'apex', role: 'Owner' }),
+            currentRole: 'Owner'
+          }
+        }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(BillingComponent);

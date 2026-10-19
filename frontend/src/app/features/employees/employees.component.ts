@@ -36,17 +36,40 @@ import { Employee, Branch, Department } from '../../core/models/models';
 
       <!-- Search & Filters Toolbar -->
       <div class="filter-toolbar glass-panel">
-        <div class="search-box">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input 
-            type="text" 
-            [(ngModel)]="searchQuery" 
-            (input)="onSearch()" 
-            placeholder="Search by name, title, or employee number..." 
-          />
+        <div class="toolbar-left">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input 
+              type="text" 
+              [(ngModel)]="searchQuery" 
+              (input)="onFilterChange()" 
+              placeholder="Search by name, title, or employee number..." 
+            />
+          </div>
+
+          <div class="select-filter">
+            <select [(ngModel)]="selectedBranchId" (change)="onFilterChange()" aria-label="Filter by Branch">
+              <option value="">All Branches</option>
+              <option *ngFor="let br of branches" [value]="br.id">{{ br.name }}</option>
+            </select>
+          </div>
+
+          <div class="select-filter">
+            <select [(ngModel)]="selectedDeptId" (change)="onFilterChange()" aria-label="Filter by Department">
+              <option value="">All Departments</option>
+              <option *ngFor="let dp of departments" [value]="dp.id">{{ dp.name }}</option>
+            </select>
+          </div>
         </div>
-        <div class="filter-count">
-          Showing {{ filteredEmployees.length }} active personnel
+
+        <div class="toolbar-right">
+          <button (click)="exportToCsv()" class="btn-secondary btn-export" title="Download Directory as CSV">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
+          <div class="filter-count">
+            Showing {{ filteredEmployees.length }} active personnel
+          </div>
         </div>
       </div>
 
@@ -61,9 +84,19 @@ import { Employee, Branch, Department } from '../../core/models/models';
               <h3 class="emp-name">{{ emp.fullName }}</h3>
               <span class="emp-job">{{ emp.jobTitle }}</span>
             </div>
-            <span class="badge" [ngClass]="emp.userId ? 'badge-emerald' : 'badge-indigo'">
-              {{ emp.userId ? 'System Access' : 'Employment Only' }}
-            </span>
+            <div class="emp-header-badges">
+              <span class="badge" [ngClass]="emp.userId ? 'badge-emerald' : 'badge-indigo'">
+                {{ emp.userId ? 'System Access' : 'Employment Only' }}
+              </span>
+              <div class="emp-actions" *ngIf="canManage()">
+                <button (click)="openEditModal(emp)" class="btn-card-action" title="Edit Employee Profile">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button (click)="confirmDelete(emp)" class="btn-card-action btn-del" title="Delete Employee Profile">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="emp-details">
@@ -91,15 +124,15 @@ import { Employee, Branch, Department } from '../../core/models/models';
         </div>
       </div>
 
-      <!-- Add Employee Modal Dialog -->
+      <!-- Add / Edit Employee Modal Dialog -->
       <div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
         <div class="modal-dialog glass-panel-elevated" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h2 class="font-heading-3">Add Employee Profile</h2>
+            <h2 class="font-heading-3">{{ isEditing ? 'Edit Employee Profile' : 'Add Employee Profile' }}</h2>
             <button class="modal-close-btn" (click)="closeModal()">✕</button>
           </div>
 
-          <form (ngSubmit)="submitCreateEmployee()" class="modal-body">
+          <form (ngSubmit)="submitEmployeeForm()" class="modal-body">
             <div class="form-row">
               <div class="form-group">
                 <label for="empFirst">First Name *</label>
@@ -114,7 +147,7 @@ import { Employee, Branch, Department } from '../../core/models/models';
             <div class="form-row">
               <div class="form-group">
                 <label for="empNum">Employee Number *</label>
-                <input id="empNum" type="text" [(ngModel)]="newEmployeeNumber" name="empNumber" placeholder="e.g. EMP-042" required />
+                <input id="empNum" type="text" [(ngModel)]="newEmployeeNumber" name="empNumber" [readonly]="isEditing" placeholder="e.g. EMP-042" required />
               </div>
               <div class="form-group">
                 <label for="empEmail">Email Address *</label>
@@ -149,14 +182,14 @@ import { Employee, Branch, Department } from '../../core/models/models';
               <label for="empManager">Reporting Manager</label>
               <select id="empManager" [(ngModel)]="newReportsToId" name="manager">
                 <option [value]="''">None (Reports to Owner)</option>
-                <option *ngFor="let emp of employees" [value]="emp.id">{{ emp.fullName }} ({{ emp.jobTitle }})</option>
+                <option *ngFor="let emp of getEligibleManagers()" [value]="emp.id">{{ emp.fullName }} ({{ emp.jobTitle }})</option>
               </select>
             </div>
 
             <div class="modal-footer">
               <button type="button" (click)="closeModal()" class="btn-secondary">Cancel</button>
               <button type="submit" class="btn-primary" [disabled]="!newFirstName || !newLastName || !newEmail || !newEmployeeNumber">
-                Save Employee Profile
+                {{ isEditing ? 'Save Changes' : 'Save Employee Profile' }}
               </button>
             </div>
           </form>
@@ -214,11 +247,16 @@ import { Employee, Branch, Department } from '../../core/models/models';
       align-items: center;
       justify-content: space-between;
       padding: 0.75rem 1.25rem;
+      gap: 1rem;
+      flex-wrap: wrap;
 
-      @include responsive-sm {
-        flex-direction: column;
+      .toolbar-left {
+        display: flex;
+        align-items: center;
         gap: 0.75rem;
-        align-items: stretch;
+        flex: 1;
+        flex-wrap: wrap;
+        min-width: 280px;
       }
 
       .search-box {
@@ -226,7 +264,8 @@ import { Employee, Branch, Department } from '../../core/models/models';
         align-items: center;
         gap: 0.5rem;
         flex: 1;
-        max-width: 400px;
+        min-width: 200px;
+        max-width: 320px;
         color: $text-muted;
 
         input {
@@ -243,9 +282,45 @@ import { Employee, Branch, Department } from '../../core/models/models';
         }
       }
 
+      .select-filter select {
+        background: rgba(17, 24, 39, 0.7);
+        border: 1px solid $border-glass;
+        border-radius: 6px;
+        color: $text-secondary;
+        font-size: 0.8125rem;
+        padding: 0.4rem 0.75rem;
+        outline: none;
+        cursor: pointer;
+
+        &:focus {
+          border-color: $aurora-indigo;
+          color: #ffffff;
+        }
+
+        option {
+          background: #111827;
+          color: #ffffff;
+        }
+      }
+
+      .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.8125rem;
+        padding: 0.4rem 0.75rem;
+      }
+
       .filter-count {
         font-size: 0.8125rem;
         color: $text-muted;
+        white-space: nowrap;
       }
     }
 
@@ -299,6 +374,43 @@ import { Employee, Branch, Department } from '../../core/models/models';
           .emp-job {
             font-size: 0.75rem;
             color: $text-muted;
+          }
+        }
+
+        .emp-header-badges {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .emp-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .btn-card-action {
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 4px;
+          color: $text-muted;
+          padding: 0.25rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all $transition-fast;
+
+          &:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: $border-glass;
+          }
+
+          &.btn-del:hover {
+            color: #fda4af;
+            background: rgba(244, 63, 94, 0.15);
+            border-color: rgba(244, 63, 94, 0.3);
           }
         }
       }
@@ -398,8 +510,12 @@ export class EmployeesComponent implements OnInit {
   public branches: Branch[] = [];
   public departments: Department[] = [];
   public searchQuery = '';
+  public selectedBranchId = '';
+  public selectedDeptId = '';
 
   public showModal = false;
+  public isEditing = false;
+  public editingEmployeeId = '';
   public newFirstName = '';
   public newLastName = '';
   public newEmail = '';
@@ -425,22 +541,36 @@ export class EmployeesComponent implements OnInit {
     this.apiService.getEmployees().subscribe(res => {
       if (res.data) {
         this.employees = res.data.data;
-        this.filteredEmployees = [...this.employees];
+        this.onFilterChange();
       }
     });
   }
 
-  public onSearch(): void {
-    if (!this.searchQuery.trim()) {
-      this.filteredEmployees = [...this.employees];
-      return;
+  public onFilterChange(): void {
+    let result = [...this.employees];
+
+    if (this.selectedBranchId) {
+      result = result.filter(e => e.branchId === this.selectedBranchId);
     }
-    const q = this.searchQuery.toLowerCase();
-    this.filteredEmployees = this.employees.filter(e =>
-      e.fullName.toLowerCase().includes(q) ||
-      e.jobTitle.toLowerCase().includes(q) ||
-      e.employeeNumber.toLowerCase().includes(q)
-    );
+
+    if (this.selectedDeptId) {
+      result = result.filter(e => e.departmentId === this.selectedDeptId);
+    }
+
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      result = result.filter(e =>
+        e.fullName.toLowerCase().includes(q) ||
+        e.jobTitle.toLowerCase().includes(q) ||
+        e.employeeNumber.toLowerCase().includes(q)
+      );
+    }
+
+    this.filteredEmployees = result;
+  }
+
+  public onSearch(): void {
+    this.onFilterChange();
   }
 
   public canManage(): boolean {
@@ -449,6 +579,8 @@ export class EmployeesComponent implements OnInit {
   }
 
   public openCreateModal(): void {
+    this.isEditing = false;
+    this.editingEmployeeId = '';
     this.newFirstName = '';
     this.newLastName = '';
     this.newEmail = '';
@@ -460,8 +592,32 @@ export class EmployeesComponent implements OnInit {
     this.showModal = true;
   }
 
+  public openEditModal(emp: Employee): void {
+    this.isEditing = true;
+    this.editingEmployeeId = emp.id;
+    this.newFirstName = emp.firstName;
+    this.newLastName = emp.lastName;
+    this.newEmail = emp.email;
+    this.newJobTitle = emp.jobTitle;
+    this.newEmployeeNumber = emp.employeeNumber;
+    this.newBranchId = emp.branchId || '';
+    this.newDeptId = emp.departmentId || '';
+    this.newReportsToId = emp.reportsToEmployeeId || '';
+    this.showModal = true;
+  }
+
   public closeModal(): void {
     this.showModal = false;
+    this.isEditing = false;
+    this.editingEmployeeId = '';
+  }
+
+  public submitEmployeeForm(): void {
+    if (this.isEditing) {
+      this.submitEditEmployee();
+    } else {
+      this.submitCreateEmployee();
+    }
   }
 
   public submitCreateEmployee(): void {
@@ -478,6 +634,58 @@ export class EmployeesComponent implements OnInit {
       this.closeModal();
       this.loadEmployees();
     });
+  }
+
+  public submitEditEmployee(): void {
+    this.apiService.updateEmployee(this.editingEmployeeId, {
+      firstName: this.newFirstName,
+      lastName: this.newLastName,
+      email: this.newEmail,
+      jobTitle: this.newJobTitle,
+      branchId: this.newBranchId || undefined,
+      departmentId: this.newDeptId || undefined,
+      reportsToEmployeeId: this.newReportsToId || undefined
+    }).subscribe(() => {
+      this.closeModal();
+      this.loadEmployees();
+    });
+  }
+
+  public confirmDelete(emp: Employee): void {
+    if (confirm(`Are you sure you want to remove employee profile for ${emp.fullName} (${emp.employeeNumber})?`)) {
+      this.apiService.deleteEmployee(emp.id).subscribe(() => {
+        this.loadEmployees();
+      });
+    }
+  }
+
+  public getEligibleManagers(): Employee[] {
+    if (!this.isEditing) return this.employees;
+    return this.employees.filter(e => e.id !== this.editingEmployeeId);
+  }
+
+  public exportToCsv(): void {
+    const headers = ['Employee ID', 'Full Name', 'Email', 'Job Title', 'Department', 'Branch', 'System Access', 'Reports To'];
+    const rows = this.filteredEmployees.map(e => [
+      `"${e.employeeNumber}"`,
+      `"${e.fullName}"`,
+      `"${e.email}"`,
+      `"${e.jobTitle}"`,
+      `"${e.departmentName || 'General Management'}"`,
+      `"${e.branchName || 'Headquarters'}"`,
+      `"${e.userId ? 'Yes' : 'No'}"`,
+      `"${e.reportsToName || 'None'}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orbit-employee-directory-${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   public getInitials(name: string): string {

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TasksComponent } from './tasks.component';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { TaskItem } from '../../core/models/models';
+import { TaskItem, TaskPriority } from '../../core/models/models';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { of } from 'rxjs';
@@ -13,20 +13,30 @@ describe('TasksComponent', () => {
   let apiService: ApiService;
   let authService: AuthService;
 
-  const createDummyTask = (id: string, title: string, status: any): TaskItem => ({
+  const createDummyTask = (id: string, title: string, status: any, priority: TaskPriority = 'High', assignee = 'Alex Mercer'): TaskItem => ({
     id,
     tenantId: 'tenant-1',
     title,
-    description: 'Test task description',
+    description: `Description for ${title}`,
     status,
-    priority: 'High',
+    priority,
+    assignedEmployeeName: assignee,
     createdAtUtc: new Date().toISOString()
   });
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TasksComponent, HttpClientTestingModule],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            activeTenant$: of({ id: 't-1', name: 'Apex Global', slug: 'apex', role: 'Owner' }),
+            currentRole: 'Owner'
+          }
+        }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(TasksComponent);
@@ -60,6 +70,49 @@ describe('TasksComponent', () => {
     expect(component.getTasksByStatus('Done').length).toBe(1);
   });
 
+  it('should filter tasks by search query across title, description, and assignee', () => {
+    component.tasks = [
+      createDummyTask('tsk-1', 'Implement OAuth2 PKCE', 'Todo', 'Urgent', 'David Lee'),
+      createDummyTask('tsk-2', 'Optimize database indices', 'Todo', 'Medium', 'Sarah Jenkins'),
+      createDummyTask('tsk-3', 'Design Dark Aurora UI', 'InProgress', 'High', 'Elena Rostova')
+    ];
+
+    component.searchQuery = 'OAuth2';
+    expect(component.getFilteredTasks().length).toBe(1);
+    expect(component.getFilteredTasks()[0].id).toBe('tsk-1');
+
+    component.searchQuery = 'Sarah';
+    expect(component.getFilteredTasks().length).toBe(1);
+    expect(component.getFilteredTasks()[0].id).toBe('tsk-2');
+
+    component.searchQuery = '';
+    expect(component.getFilteredTasks().length).toBe(3);
+  });
+
+  it('should filter tasks by priority chip selection', () => {
+    component.tasks = [
+      createDummyTask('tsk-1', 'Emergency Hotfix', 'Todo', 'Urgent'),
+      createDummyTask('tsk-2', 'Q3 Roadmapping', 'Todo', 'High'),
+      createDummyTask('tsk-3', 'Clean CSS Variables', 'InProgress', 'Low')
+    ];
+
+    expect(component.selectedPriority).toBe('All');
+    expect(component.getFilteredTasks().length).toBe(3);
+
+    component.setPriorityFilter('Urgent');
+    expect(component.selectedPriority).toBe('Urgent');
+    expect(component.getFilteredTasks().length).toBe(1);
+    expect(component.getTasksByStatus('Todo').length).toBe(1);
+
+    component.setPriorityFilter('Low');
+    expect(component.getFilteredTasks().length).toBe(1);
+    expect(component.getTasksByStatus('InProgress').length).toBe(1);
+    expect(component.getTasksByStatus('Todo').length).toBe(0);
+
+    component.setPriorityFilter('All');
+    expect(component.getFilteredTasks().length).toBe(3);
+  });
+
   it('should toggle create task modal', () => {
     component.openCreateModal();
     expect(component.showModal).toBeTrue();
@@ -70,13 +123,13 @@ describe('TasksComponent', () => {
   });
 
   it('should evaluate canDelete permissions correctly based on currentRole', () => {
-    spyOnProperty(authService, 'currentRole', 'get').and.returnValue('Owner');
+    spyOnProperty(component, 'currentRole', 'get').and.returnValue('Owner');
     expect(component.canDelete()).toBeTrue();
 
-    (Object.getOwnPropertyDescriptor(authService, 'currentRole')?.get as jasmine.Spy).and.returnValue('Manager');
+    (Object.getOwnPropertyDescriptor(component, 'currentRole')?.get as jasmine.Spy).and.returnValue('Manager');
     expect(component.canDelete()).toBeTrue();
 
-    (Object.getOwnPropertyDescriptor(authService, 'currentRole')?.get as jasmine.Spy).and.returnValue('Employee');
+    (Object.getOwnPropertyDescriptor(component, 'currentRole')?.get as jasmine.Spy).and.returnValue('Employee');
     expect(component.canDelete()).toBeFalse();
   });
 

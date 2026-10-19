@@ -15,7 +15,16 @@ describe('EmployeesComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [EmployeesComponent, HttpClientTestingModule],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            activeTenant$: of({ id: 't-1', name: 'Apex Global', slug: 'apex', role: 'Owner' }),
+            currentRole: 'Owner'
+          }
+        }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(EmployeesComponent);
@@ -47,6 +56,7 @@ describe('EmployeesComponent', () => {
 
     component.openCreateModal();
     expect(component.showModal).toBeTrue();
+    expect(component.isEditing).toBeFalse();
     expect(component.newEmployeeNumber).toBe('EMP-02');
 
     component.closeModal();
@@ -60,17 +70,17 @@ describe('EmployeesComponent', () => {
   });
 
   it('should evaluate canManage role permissions', () => {
-    spyOnProperty(authService, 'currentRole', 'get').and.returnValue('Owner');
+    (authService as any).currentRole = 'Owner';
     expect(component.canManage()).toBeTrue();
 
-    (Object.getOwnPropertyDescriptor(authService, 'currentRole')?.get as jasmine.Spy).and.returnValue('Admin');
+    (authService as any).currentRole = 'Admin';
     expect(component.canManage()).toBeTrue();
 
-    (Object.getOwnPropertyDescriptor(authService, 'currentRole')?.get as jasmine.Spy).and.returnValue('Employee');
+    (authService as any).currentRole = 'Employee';
     expect(component.canManage()).toBeFalse();
   });
 
-  it('should filter employees list by search query', () => {
+  it('should filter employees list by search query, branch, and department', () => {
     component.employees = [
       {
         id: 'emp-1',
@@ -82,6 +92,8 @@ describe('EmployeesComponent', () => {
         fullName: 'Alex Morgan',
         email: 'alex@starlight.com',
         jobTitle: 'Chief Executive Officer',
+        branchId: 'br-hq',
+        departmentId: 'dp-exec',
         hireDateUtc: new Date().toISOString(),
         isActive: true
       },
@@ -95,18 +107,36 @@ describe('EmployeesComponent', () => {
         fullName: 'Sarah Jenkins',
         email: 'sarah@starlight.com',
         jobTitle: 'VP of Operations',
+        branchId: 'br-remote',
+        departmentId: 'dp-ops',
         hireDateUtc: new Date().toISOString(),
         isActive: true
       }
     ];
 
+    // Search query filter
     component.searchQuery = 'Morgan';
-    component.onSearch();
+    component.onFilterChange();
     expect(component.filteredEmployees.length).toBe(1);
     expect(component.filteredEmployees[0].fullName).toBe('Alex Morgan');
 
+    // Reset search, test Branch filter
     component.searchQuery = '';
-    component.onSearch();
+    component.selectedBranchId = 'br-remote';
+    component.onFilterChange();
+    expect(component.filteredEmployees.length).toBe(1);
+    expect(component.filteredEmployees[0].fullName).toBe('Sarah Jenkins');
+
+    // Test Department filter
+    component.selectedBranchId = '';
+    component.selectedDeptId = 'dp-exec';
+    component.onFilterChange();
+    expect(component.filteredEmployees.length).toBe(1);
+    expect(component.filteredEmployees[0].fullName).toBe('Alex Morgan');
+
+    // Clear filters
+    component.selectedDeptId = '';
+    component.onFilterChange();
     expect(component.filteredEmployees.length).toBe(2);
   });
 
@@ -135,7 +165,7 @@ describe('EmployeesComponent', () => {
     component.newJobTitle = 'Systems Architect';
     component.newEmployeeNumber = 'EMP-003';
 
-    component.submitCreateEmployee();
+    component.submitEmployeeForm();
 
     expect(apiService.createEmployee).toHaveBeenCalledWith(jasmine.objectContaining({
       firstName: 'Elena',
@@ -146,5 +176,123 @@ describe('EmployeesComponent', () => {
     }));
     expect(component.showModal).toBeFalse();
     expect(component.loadEmployees).toHaveBeenCalled();
+  });
+
+  it('should open edit modal, prefill employee details, and submit update request', () => {
+    const existingEmployee = {
+      id: 'emp-42',
+      tenantId: 't-1',
+      employeeNumber: 'EMP-042',
+      firstName: 'Marcus',
+      lastName: 'Vance',
+      fullName: 'Marcus Vance',
+      email: 'marcus@starlight.com',
+      jobTitle: 'DevOps Lead',
+      branchId: 'br-1',
+      departmentId: 'dp-1',
+      reportsToEmployeeId: 'emp-1',
+      hireDateUtc: new Date().toISOString(),
+      isActive: true
+    };
+
+    spyOn(apiService, 'updateEmployee').and.returnValue(of({
+      success: true,
+      data: existingEmployee
+    }));
+    spyOn(component, 'loadEmployees');
+
+    component.openEditModal(existingEmployee);
+    expect(component.showModal).toBeTrue();
+    expect(component.isEditing).toBeTrue();
+    expect(component.editingEmployeeId).toBe('emp-42');
+    expect(component.newFirstName).toBe('Marcus');
+    expect(component.newLastName).toBe('Vance');
+    expect(component.newEmail).toBe('marcus@starlight.com');
+    expect(component.newJobTitle).toBe('DevOps Lead');
+    expect(component.newBranchId).toBe('br-1');
+    expect(component.newDeptId).toBe('dp-1');
+
+    // Modify fields and submit
+    component.newJobTitle = 'Director of Platform Engineering';
+    component.submitEmployeeForm();
+
+    expect(apiService.updateEmployee).toHaveBeenCalledWith('emp-42', jasmine.objectContaining({
+      firstName: 'Marcus',
+      lastName: 'Vance',
+      jobTitle: 'Director of Platform Engineering'
+    }));
+    expect(component.showModal).toBeFalse();
+    expect(component.loadEmployees).toHaveBeenCalled();
+  });
+
+  it('should prompt confirmation and delete employee profile', () => {
+    const emp = {
+      id: 'emp-99',
+      tenantId: 't-1',
+      employeeNumber: 'EMP-099',
+      firstName: 'Temporary',
+      lastName: 'Contractor',
+      fullName: 'Temporary Contractor',
+      email: 'temp@starlight.com',
+      jobTitle: 'Consultant',
+      hireDateUtc: new Date().toISOString(),
+      isActive: true
+    };
+
+    spyOn(window, 'confirm').and.returnValue(true);
+    spyOn(apiService, 'deleteEmployee').and.returnValue(of({
+      success: true,
+      data: null
+    }));
+    spyOn(component, 'loadEmployees');
+
+    component.confirmDelete(emp);
+    expect(window.confirm).toHaveBeenCalledWith(
+      'Are you sure you want to remove employee profile for Temporary Contractor (EMP-099)?'
+    );
+    expect(apiService.deleteEmployee).toHaveBeenCalledWith('emp-99');
+    expect(component.loadEmployees).toHaveBeenCalled();
+  });
+
+  it('should not delete employee if user cancels confirmation', () => {
+    const emp = {
+      id: 'emp-99',
+      tenantId: 't-1',
+      employeeNumber: 'EMP-099',
+      firstName: 'Temporary',
+      lastName: 'Contractor',
+      fullName: 'Temporary Contractor',
+      email: 'temp@starlight.com',
+      jobTitle: 'Consultant',
+      hireDateUtc: new Date().toISOString(),
+      isActive: true
+    };
+
+    spyOn(window, 'confirm').and.returnValue(false);
+    spyOn(apiService, 'deleteEmployee');
+
+    component.confirmDelete(emp);
+    expect(apiService.deleteEmployee).not.toHaveBeenCalled();
+  });
+
+  it('should export filtered employees to CSV format', () => {
+    component.filteredEmployees = [
+      {
+        id: 'emp-1',
+        tenantId: 't-1',
+        employeeNumber: 'EMP-001',
+        firstName: 'Alex',
+        lastName: 'Morgan',
+        fullName: 'Alex Morgan',
+        email: 'alex@starlight.com',
+        jobTitle: 'Chief Executive Officer',
+        hireDateUtc: new Date().toISOString(),
+        isActive: true
+      }
+    ];
+
+    spyOn(document, 'createElement').and.callThrough();
+    component.exportToCsv();
+    expect(document.createElement).toHaveBeenCalledWith('a');
   });
 });
