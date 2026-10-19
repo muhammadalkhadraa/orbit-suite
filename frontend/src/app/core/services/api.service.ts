@@ -864,6 +864,33 @@ export class ApiService {
     );
   }
 
+  public updateBranch(id: string, branch: Partial<Branch>): Observable<ApiResponse<Branch>> {
+    return this.http.put<ApiResponse<Branch>>(`${this.baseUrl}/organization/branches/${id}`, branch).pipe(
+      catchError(() => {
+        const index = this.mockBranches.findIndex(b => b.id === id);
+        if (index !== -1) {
+          const updated: Branch = {
+            ...this.mockBranches[index],
+            ...branch,
+            code: (branch.code ?? this.mockBranches[index].code).toUpperCase()
+          };
+          this.mockBranches[index] = updated;
+          return of({ success: true, data: updated, message: 'Branch updated successfully.' });
+        }
+        return of({ success: false, data: {} as Branch, message: 'Branch not found.' });
+      })
+    );
+  }
+
+  public deleteBranch(id: string): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/organization/branches/${id}`).pipe(
+      catchError(() => {
+        this.mockBranches = this.mockBranches.filter(b => b.id !== id);
+        return of({ success: true, data: null, message: 'Branch deleted successfully.' });
+      })
+    );
+  }
+
   // 3. Departments
   public getDepartments(): Observable<ApiResponse<Department[]>> {
     return this.http.get<ApiResponse<Department[]>>(`${this.baseUrl}/organization/departments`).pipe(
@@ -885,6 +912,33 @@ export class ApiService {
         };
         this.mockDepartments.push(newDept);
         return of({ success: true, data: newDept, message: 'Department created successfully.' });
+      })
+    );
+  }
+
+  public updateDepartment(id: string, dept: Partial<Department>): Observable<ApiResponse<Department>> {
+    return this.http.put<ApiResponse<Department>>(`${this.baseUrl}/organization/departments/${id}`, dept).pipe(
+      catchError(() => {
+        const index = this.mockDepartments.findIndex(d => d.id === id);
+        if (index !== -1) {
+          const updated: Department = {
+            ...this.mockDepartments[index],
+            ...dept,
+            code: (dept.code ?? this.mockDepartments[index].code).toUpperCase()
+          };
+          this.mockDepartments[index] = updated;
+          return of({ success: true, data: updated, message: 'Department updated successfully.' });
+        }
+        return of({ success: false, data: {} as Department, message: 'Department not found.' });
+      })
+    );
+  }
+
+  public deleteDepartment(id: string): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/organization/departments/${id}`).pipe(
+      catchError(() => {
+        this.mockDepartments = this.mockDepartments.filter(d => d.id !== id);
+        return of({ success: true, data: null, message: 'Department deleted successfully.' });
       })
     );
   }

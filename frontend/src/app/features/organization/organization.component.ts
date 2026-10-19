@@ -69,21 +69,66 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
         </button>
       </div>
 
+      <!-- Search & Filters Toolbar -->
+      <div class="filter-toolbar glass-panel">
+        <div class="toolbar-left">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input 
+              type="text" 
+              [(ngModel)]="searchQuery" 
+              [placeholder]="activeTab === 'branches' ? 'Search branches by name, code, city...' : 'Search departments by name, code...'" 
+            />
+          </div>
+
+          <div class="select-filter">
+            <select [(ngModel)]="statusFilter" aria-label="Filter by Status">
+              <option value="ALL">All Statuses</option>
+              <option value="Active">Active Only</option>
+              <option value="Inactive">Inactive Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <button (click)="exportToCsv()" class="btn-secondary btn-export" [title]="'Export ' + activeTab + ' as CSV'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
+          <div class="filter-count">
+            Showing {{ activeTab === 'branches' ? getFilteredBranches().length : getFilteredDepartments().length }} {{ activeTab }}
+          </div>
+        </div>
+      </div>
+
       <!-- Branches Content -->
       <div *ngIf="activeTab === 'branches'" class="tab-pane">
         <div class="cards-grid">
-          <div *ngFor="let branch of branches" class="glass-panel branch-card">
+          <div *ngFor="let branch of getFilteredBranches()" class="glass-panel branch-card">
             <div class="card-top">
-              <span class="badge badge-cyan">{{ branch.code }}</span>
-              <span class="badge" [ngClass]="branch.isActive ? 'badge-emerald' : 'badge-rose'">
-                {{ branch.isActive ? 'Active' : 'Inactive' }}
-              </span>
+              <div class="card-badges">
+                <span class="badge badge-cyan">{{ branch.code }}</span>
+                <span class="badge" [ngClass]="branch.isActive ? 'badge-emerald' : 'badge-rose'">
+                  {{ branch.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+              <div class="card-actions" *ngIf="canManage()">
+                <button (click)="openEditBranchModal(branch)" class="btn-card-action" title="Edit Operating Branch">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button (click)="confirmDeleteBranch(branch)" class="btn-card-action btn-del" title="Delete Operating Branch">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
             </div>
             <h3 class="branch-name">{{ branch.name }}</h3>
-            <p class="branch-location">📍 {{ branch.city }}, {{ branch.country }}</p>
+            <p class="branch-location">📍 {{ branch.city || 'Unspecified' }}, {{ branch.country || 'Global' }}</p>
             <div class="branch-footer">
               <span class="emp-count">👥 {{ branch.employeeCount }} Assigned Employees</span>
             </div>
+          </div>
+          <div *ngIf="getFilteredBranches().length === 0" class="empty-state glass-panel">
+            No operating branches match the selected filter criteria.
           </div>
         </div>
       </div>
@@ -91,12 +136,22 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
       <!-- Departments Content -->
       <div *ngIf="activeTab === 'departments'" class="tab-pane">
         <div class="cards-grid">
-          <div *ngFor="let dept of departments" class="glass-panel branch-card">
+          <div *ngFor="let dept of getFilteredDepartments()" class="glass-panel branch-card">
             <div class="card-top">
-              <span class="badge badge-violet">{{ dept.code }}</span>
-              <span class="badge" [ngClass]="dept.isActive ? 'badge-emerald' : 'badge-rose'">
-                {{ dept.isActive ? 'Active' : 'Inactive' }}
-              </span>
+              <div class="card-badges">
+                <span class="badge badge-violet">{{ dept.code }}</span>
+                <span class="badge" [ngClass]="dept.isActive ? 'badge-emerald' : 'badge-rose'">
+                  {{ dept.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+              <div class="card-actions" *ngIf="canManage()">
+                <button (click)="openEditDeptModal(dept)" class="btn-card-action" title="Edit Department">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button (click)="confirmDeleteDept(dept)" class="btn-card-action btn-del" title="Delete Department">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
             </div>
             <h3 class="branch-name">{{ dept.name }}</h3>
             <p class="branch-location">{{ dept.description || 'General departmental operating unit' }}</p>
@@ -104,24 +159,27 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
               <span class="emp-count">👥 {{ dept.employeeCount }} Assigned Personnel</span>
             </div>
           </div>
+          <div *ngIf="getFilteredDepartments().length === 0" class="empty-state glass-panel">
+            No departments match the selected filter criteria.
+          </div>
         </div>
       </div>
 
-      <!-- Add Branch Modal -->
+      <!-- Add / Edit Branch Modal -->
       <div class="modal-overlay" *ngIf="showBranchModal" (click)="closeModals()">
         <div class="modal-dialog glass-panel-elevated" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h2 class="font-heading-3">Add Operating Branch</h2>
+            <h2 class="font-heading-3">{{ isEditingBranch ? 'Edit Operating Branch' : 'Add Operating Branch' }}</h2>
             <button class="modal-close-btn" (click)="closeModals()">✕</button>
           </div>
-          <form (ngSubmit)="submitCreateBranch()" class="modal-body">
+          <form (ngSubmit)="submitBranchForm()" class="modal-body">
             <div class="form-group">
               <label for="brName">Branch Facility Name *</label>
               <input id="brName" type="text" [(ngModel)]="newBranchName" name="bName" placeholder="e.g. Asia-Pacific Regional Hub" required />
             </div>
             <div class="form-group">
               <label for="brCode">Branch Code (Unique) *</label>
-              <input id="brCode" type="text" [(ngModel)]="newBranchCode" name="bCode" placeholder="e.g. APAC-SG" required />
+              <input id="brCode" type="text" [(ngModel)]="newBranchCode" name="bCode" [readonly]="isEditingBranch" placeholder="e.g. APAC-SG" required />
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -135,27 +193,29 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
             </div>
             <div class="modal-footer">
               <button type="button" (click)="closeModals()" class="btn-secondary">Cancel</button>
-              <button type="submit" class="btn-primary" [disabled]="!newBranchName || !newBranchCode">Save Branch</button>
+              <button type="submit" class="btn-primary" [disabled]="!newBranchName || !newBranchCode">
+                {{ isEditingBranch ? 'Save Changes' : 'Save Branch' }}
+              </button>
             </div>
           </form>
         </div>
       </div>
 
-      <!-- Add Department Modal -->
+      <!-- Add / Edit Department Modal -->
       <div class="modal-overlay" *ngIf="showDeptModal" (click)="closeModals()">
         <div class="modal-dialog glass-panel-elevated" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h2 class="font-heading-3">Add Department</h2>
+            <h2 class="font-heading-3">{{ isEditingDept ? 'Edit Department' : 'Add Department' }}</h2>
             <button class="modal-close-btn" (click)="closeModals()">✕</button>
           </div>
-          <form (ngSubmit)="submitCreateDept()" class="modal-body">
+          <form (ngSubmit)="submitDeptForm()" class="modal-body">
             <div class="form-group">
               <label for="dpName">Department Name *</label>
               <input id="dpName" type="text" [(ngModel)]="newDeptName" name="dName" placeholder="e.g. Quality Assurance & Auditing" required />
             </div>
             <div class="form-group">
               <label for="dpCode">Department Code (Unique) *</label>
-              <input id="dpCode" type="text" [(ngModel)]="newDeptCode" name="dCode" placeholder="e.g. QA-AUD" required />
+              <input id="dpCode" type="text" [(ngModel)]="newDeptCode" name="dCode" [readonly]="isEditingDept" placeholder="e.g. QA-AUD" required />
             </div>
             <div class="form-group">
               <label for="dpDesc">Purpose & Mission</label>
@@ -163,7 +223,9 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
             </div>
             <div class="modal-footer">
               <button type="button" (click)="closeModals()" class="btn-secondary">Cancel</button>
-              <button type="submit" class="btn-primary" [disabled]="!newDeptName || !newDeptCode">Save Department</button>
+              <button type="submit" class="btn-primary" [disabled]="!newDeptName || !newDeptCode">
+                {{ isEditingDept ? 'Save Changes' : 'Save Department' }}
+              </button>
             </div>
           </form>
         </div>
@@ -297,6 +359,88 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
       }
     }
 
+    .filter-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+
+      .toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+        flex-wrap: wrap;
+        min-width: 280px;
+      }
+
+      .search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 220px;
+        max-width: 340px;
+        color: $text-muted;
+
+        input {
+          background: none;
+          border: none;
+          color: #ffffff;
+          font-size: 0.875rem;
+          width: 100%;
+          outline: none;
+
+          &::placeholder {
+            color: $text-muted;
+          }
+        }
+      }
+
+      .select-filter select {
+        background: rgba(17, 24, 39, 0.7);
+        border: 1px solid $border-glass;
+        border-radius: 6px;
+        color: $text-secondary;
+        font-size: 0.8125rem;
+        padding: 0.4rem 0.75rem;
+        outline: none;
+        cursor: pointer;
+
+        &:focus {
+          border-color: $aurora-indigo;
+          color: #ffffff;
+        }
+
+        option {
+          background: #111827;
+          color: #ffffff;
+        }
+      }
+
+      .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.8125rem;
+        padding: 0.4rem 0.75rem;
+      }
+
+      .filter-count {
+        font-size: 0.8125rem;
+        color: $text-muted;
+        white-space: nowrap;
+      }
+    }
+
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -308,11 +452,54 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
+      transition: all $transition-fast;
+
+      &:hover {
+        border-color: $border-glass-hover;
+        transform: translateY(-2px);
+      }
 
       .card-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
+
+        .card-badges {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .card-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+      }
+
+      .btn-card-action {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        color: $text-muted;
+        padding: 0.25rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all $transition-fast;
+
+        &:hover {
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.08);
+          border-color: $border-glass;
+        }
+
+        &.btn-del:hover {
+          color: #fda4af;
+          background: rgba(244, 63, 94, 0.15);
+          border-color: rgba(244, 63, 94, 0.3);
+        }
       }
 
       .branch-name {
@@ -332,6 +519,14 @@ import { TenantDetails, Branch, Department } from '../../core/models/models';
         font-size: 0.75rem;
         color: $text-muted;
       }
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 2.5rem;
+      color: $text-muted;
+      font-size: 0.875rem;
     }
 
     // Modal
@@ -393,13 +588,20 @@ export class OrganizationComponent implements OnInit {
   public departments: Department[] = [];
   public activeTab: 'branches' | 'departments' = 'branches';
 
+  public searchQuery = '';
+  public statusFilter: 'ALL' | 'Active' | 'Inactive' = 'ALL';
+
   public showBranchModal = false;
+  public isEditingBranch = false;
+  public editingBranchId = '';
   public newBranchName = '';
   public newBranchCode = '';
   public newBranchCity = '';
   public newBranchCountry = '';
 
   public showDeptModal = false;
+  public isEditingDept = false;
+  public editingDeptId = '';
   public newDeptName = '';
   public newDeptCode = '';
   public newDeptDesc = '';
@@ -427,7 +629,52 @@ export class OrganizationComponent implements OnInit {
     return role === 'Owner' || role === 'Admin';
   }
 
+  public getFilteredBranches(): Branch[] {
+    let result = [...this.branches];
+
+    if (this.statusFilter === 'Active') {
+      result = result.filter(b => b.isActive);
+    } else if (this.statusFilter === 'Inactive') {
+      result = result.filter(b => !b.isActive);
+    }
+
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      result = result.filter(b =>
+        b.name.toLowerCase().includes(q) ||
+        b.code.toLowerCase().includes(q) ||
+        (b.city && b.city.toLowerCase().includes(q)) ||
+        (b.country && b.country.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }
+
+  public getFilteredDepartments(): Department[] {
+    let result = [...this.departments];
+
+    if (this.statusFilter === 'Active') {
+      result = result.filter(d => d.isActive);
+    } else if (this.statusFilter === 'Inactive') {
+      result = result.filter(d => !d.isActive);
+    }
+
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      result = result.filter(d =>
+        d.name.toLowerCase().includes(q) ||
+        d.code.toLowerCase().includes(q) ||
+        (d.description && d.description.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }
+
   public openBranchModal(): void {
+    this.isEditingBranch = false;
+    this.editingBranchId = '';
     this.newBranchName = '';
     this.newBranchCode = '';
     this.newBranchCity = '';
@@ -435,16 +682,49 @@ export class OrganizationComponent implements OnInit {
     this.showBranchModal = true;
   }
 
+  public openEditBranchModal(branch: Branch): void {
+    this.isEditingBranch = true;
+    this.editingBranchId = branch.id;
+    this.newBranchName = branch.name;
+    this.newBranchCode = branch.code;
+    this.newBranchCity = branch.city || '';
+    this.newBranchCountry = branch.country || '';
+    this.showBranchModal = true;
+  }
+
   public openDeptModal(): void {
+    this.isEditingDept = false;
+    this.editingDeptId = '';
     this.newDeptName = '';
     this.newDeptCode = '';
     this.newDeptDesc = '';
     this.showDeptModal = true;
   }
 
+  public openEditDeptModal(dept: Department): void {
+    this.isEditingDept = true;
+    this.editingDeptId = dept.id;
+    this.newDeptName = dept.name;
+    this.newDeptCode = dept.code;
+    this.newDeptDesc = dept.description || '';
+    this.showDeptModal = true;
+  }
+
   public closeModals(): void {
     this.showBranchModal = false;
     this.showDeptModal = false;
+    this.isEditingBranch = false;
+    this.isEditingDept = false;
+    this.editingBranchId = '';
+    this.editingDeptId = '';
+  }
+
+  public submitBranchForm(): void {
+    if (this.isEditingBranch) {
+      this.submitEditBranch();
+    } else {
+      this.submitCreateBranch();
+    }
   }
 
   public submitCreateBranch(): void {
@@ -459,6 +739,34 @@ export class OrganizationComponent implements OnInit {
     });
   }
 
+  public submitEditBranch(): void {
+    this.apiService.updateBranch(this.editingBranchId, {
+      name: this.newBranchName,
+      code: this.newBranchCode,
+      city: this.newBranchCity,
+      country: this.newBranchCountry
+    }).subscribe(() => {
+      this.closeModals();
+      this.loadData();
+    });
+  }
+
+  public confirmDeleteBranch(branch: Branch): void {
+    if (confirm(`Are you sure you want to delete branch ${branch.name} (${branch.code})?`)) {
+      this.apiService.deleteBranch(branch.id).subscribe(() => {
+        this.loadData();
+      });
+    }
+  }
+
+  public submitDeptForm(): void {
+    if (this.isEditingDept) {
+      this.submitEditDept();
+    } else {
+      this.submitCreateDept();
+    }
+  }
+
   public submitCreateDept(): void {
     this.apiService.createDepartment({
       name: this.newDeptName,
@@ -468,5 +776,60 @@ export class OrganizationComponent implements OnInit {
       this.closeModals();
       this.loadData();
     });
+  }
+
+  public submitEditDept(): void {
+    this.apiService.updateDepartment(this.editingDeptId, {
+      name: this.newDeptName,
+      code: this.newDeptCode,
+      description: this.newDeptDesc
+    }).subscribe(() => {
+      this.closeModals();
+      this.loadData();
+    });
+  }
+
+  public confirmDeleteDept(dept: Department): void {
+    if (confirm(`Are you sure you want to delete department ${dept.name} (${dept.code})?`)) {
+      this.apiService.deleteDepartment(dept.id).subscribe(() => {
+        this.loadData();
+      });
+    }
+  }
+
+  public exportToCsv(): void {
+    if (this.activeTab === 'branches') {
+      const headers = ['Branch Code', 'Branch Name', 'City', 'Country', 'Status', 'Employee Count'];
+      const rows = this.getFilteredBranches().map(b => [
+        `"${b.code}"`,
+        `"${b.name}"`,
+        `"${b.city || ''}"`,
+        `"${b.country || ''}"`,
+        `"${b.isActive ? 'Active' : 'Inactive'}"`,
+        `"${b.employeeCount}"`
+      ]);
+      this.downloadCsv([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-branches-${Date.now()}.csv`);
+    } else {
+      const headers = ['Department Code', 'Department Name', 'Description', 'Status', 'Employee Count'];
+      const rows = this.getFilteredDepartments().map(d => [
+        `"${d.code}"`,
+        `"${d.name}"`,
+        `"${d.description || ''}"`,
+        `"${d.isActive ? 'Active' : 'Inactive'}"`,
+        `"${d.employeeCount}"`
+      ]);
+      this.downloadCsv([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-departments-${Date.now()}.csv`);
+    }
+  }
+
+  private downloadCsv(content: string, filename: string): void {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }
