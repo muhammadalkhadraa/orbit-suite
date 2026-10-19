@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { AudioService } from './audio.service';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -15,12 +16,23 @@ export interface ToastMessage {
   providedIn: 'root'
 })
 export class ToastService {
+  private audioService = inject(AudioService);
   private toastsSubject = new BehaviorSubject<ToastMessage[]>([]);
   public toasts$: Observable<ToastMessage[]> = this.toastsSubject.asObservable();
 
   public show(type: ToastType, title: string, message?: string, duration = 4000): void {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const toast: ToastMessage = { id, type, title, message, duration };
+
+    if (this.audioService.isEnabled()) {
+      if (type === 'success' || type === 'info') {
+        this.audioService.playSuccessChime();
+      } else if (type === 'warning') {
+        this.audioService.playWarningChime();
+      } else if (type === 'error') {
+        this.audioService.playErrorChime();
+      }
+    }
 
     const current = this.toastsSubject.value;
     this.toastsSubject.next([...current, toast]);

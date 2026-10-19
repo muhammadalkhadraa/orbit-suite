@@ -317,13 +317,51 @@ describe('WorkspaceLayoutComponent', () => {
   it('should toggle audio and compact preferences with toast notifications', () => {
     const toastService = (component as any).toastService;
     spyOn(toastService, 'info');
+    spyOn(component.audioService, 'setEnabled');
 
     component.prefAudioEnabled = true;
     component.toggleAudioPref();
+    expect(component.audioService.setEnabled).toHaveBeenCalledWith(true);
     expect(toastService.info).toHaveBeenCalledWith('Preferences Updated', 'Audio alerts enabled');
+
+    component.prefAudioEnabled = false;
+    component.toggleAudioPref();
+    expect(component.audioService.setEnabled).toHaveBeenCalledWith(false);
+    expect(toastService.info).toHaveBeenCalledWith('Preferences Updated', 'Audio alerts disabled');
 
     component.prefCompactView = true;
     component.toggleCompactPref();
     expect(toastService.info).toHaveBeenCalledWith('Preferences Updated', 'Compact view enabled');
+  });
+
+  it('should open and close health modal and trigger pingHealth', () => {
+    spyOn(component, 'pingHealth');
+    expect(component.showHealthModal).toBeFalse();
+
+    component.openHealthModal();
+    expect(component.showHealthModal).toBeTrue();
+    expect(component.pingHealth).toHaveBeenCalled();
+
+    component.closeHealthModal();
+    expect(component.showHealthModal).toBeFalse();
+  });
+
+  it('should ping system health telemetry and populate healthData', async () => {
+    spyOn(window, 'fetch').and.returnValue(Promise.resolve(new Response(JSON.stringify({
+      status: 'Healthy',
+      service: 'Orbit Business Suite API v1',
+      timestamp: '2026-10-19T12:00:00Z'
+    }))));
+
+    component.pingHealth();
+    expect(component.isPingingHealth).toBeTrue();
+
+    // Allow promise resolution
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(component.healthData).toBeTruthy();
+    expect(component.healthData.status).toBe('Healthy');
+    expect(component.healthData.uptimePercent).toBe(99.98);
+    expect(component.isPingingHealth).toBeFalse();
   });
 });

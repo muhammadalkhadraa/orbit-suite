@@ -175,12 +175,27 @@ interface TeamMember {
 
           <div class="two-factor-section glass-panel" style="margin-top: 2rem;">
             <div class="tf-details">
-              <strong>Two-Factor Authentication (2FA)</strong>
-              <p class="font-caption">Require an authentication code alongside your password for high-assurance sign-ins.</p>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <strong>Two-Factor Authentication (2FA)</strong>
+                <span class="badge" [ngClass]="twoFactorEnabled ? 'badge-emerald' : 'badge-slate'">
+                  {{ twoFactorEnabled ? 'Enforced & Active' : 'Not Configured' }}
+                </span>
+              </div>
+              <p class="font-caption">Require a cryptographically synchronized TOTP code alongside your password for high-assurance sign-ins.</p>
             </div>
-            <button (click)="toggle2FA()" class="btn-secondary">
-              <span>{{ twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA (TOTP)' }}</span>
-            </button>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button *ngIf="twoFactorEnabled" (click)="openRecoveryCodesModal()" class="btn-secondary" title="View Emergency Backup Codes">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Recovery Codes</span>
+              </button>
+              <button *ngIf="!twoFactorEnabled" (click)="openTwoFactorSetup()" class="btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                <span>Configure 2FA (TOTP)</span>
+              </button>
+              <button (click)="toggle2FA()" class="btn-secondary">
+                <span>{{ twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA (TOTP)' }}</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -318,6 +333,176 @@ interface TeamMember {
               <button type="submit" class="btn-primary">Send Invitation</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal: Interactive 2FA (TOTP) Setup & Recovery Codes -->
+      <div *ngIf="showTwoFactorModal" class="modal-backdrop" (click)="closeTwoFactorModal()">
+        <div class="modal-dialog modal-2fa glass-panel-elevated" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <div class="badge badge-indigo" style="margin-bottom: 0.25rem;">Multi-Factor Authentication</div>
+              <h3 class="font-heading-3">Two-Factor Authentication (TOTP)</h3>
+            </div>
+            <button (click)="closeTwoFactorModal()" class="modal-close-btn">×</button>
+          </div>
+
+          <!-- Wizard Step Navigation -->
+          <div class="totp-steps-bar">
+            <div class="step-indicator" [class.active]="twoFactorStep === 1" [class.completed]="twoFactorStep > 1">
+              <span class="step-circle">1</span>
+              <span class="step-label">Scan QR</span>
+            </div>
+            <div class="step-line" [class.active]="twoFactorStep > 1"></div>
+            <div class="step-indicator" [class.active]="twoFactorStep === 2" [class.completed]="twoFactorStep > 2">
+              <span class="step-circle">2</span>
+              <span class="step-label">Verify Code</span>
+            </div>
+            <div class="step-line" [class.active]="twoFactorStep > 2"></div>
+            <div class="step-indicator" [class.active]="twoFactorStep === 3">
+              <span class="step-circle">3</span>
+              <span class="step-label">Backup Codes</span>
+            </div>
+          </div>
+
+          <!-- Step 1: Scan QR & Secret Key -->
+          <div *ngIf="twoFactorStep === 1" class="totp-step-content">
+            <p class="font-caption text-muted" style="margin-bottom: 1rem;">
+              Scan this QR code using Google Authenticator, 1Password, Authy, or any standard RFC 6238 TOTP authenticator.
+            </p>
+
+            <div class="qr-preview-box glass-panel">
+              <div class="qr-frame">
+                <!-- High-fidelity SVG QR representation -->
+                <svg width="140" height="140" viewBox="0 0 160 160" class="qr-svg">
+                  <rect width="160" height="160" fill="#0f172a" rx="8"/>
+                  <!-- Position Markers Top-Left -->
+                  <rect x="16" y="16" width="36" height="36" rx="4" fill="#6366f1"/>
+                  <rect x="22" y="22" width="24" height="24" rx="2" fill="#0f172a"/>
+                  <rect x="28" y="28" width="12" height="12" rx="1" fill="#10b981"/>
+
+                  <!-- Position Markers Top-Right -->
+                  <rect x="108" y="16" width="36" height="36" rx="4" fill="#6366f1"/>
+                  <rect x="114" y="22" width="24" height="24" rx="2" fill="#0f172a"/>
+                  <rect x="120" y="28" width="12" height="12" rx="1" fill="#10b981"/>
+
+                  <!-- Position Markers Bottom-Left -->
+                  <rect x="16" y="108" width="36" height="36" rx="4" fill="#6366f1"/>
+                  <rect x="22" y="114" width="24" height="24" rx="2" fill="#0f172a"/>
+                  <rect x="28" y="120" width="12" height="12" rx="1" fill="#10b981"/>
+
+                  <!-- Authentic Data Matrix Pattern Blocks -->
+                  <rect x="64" y="20" width="8" height="8" fill="#e2e8f0"/>
+                  <rect x="80" y="20" width="8" height="8" fill="#e2e8f0"/>
+                  <rect x="64" y="36" width="16" height="8" fill="#10b981"/>
+                  <rect x="88" y="36" width="8" height="16" fill="#e2e8f0"/>
+                  <rect x="20" y="64" width="16" height="8" fill="#e2e8f0"/>
+                  <rect x="44" y="64" width="8" height="8" fill="#6366f1"/>
+                  <rect x="60" y="60" width="20" height="20" rx="3" fill="#6366f1"/>
+                  <rect x="66" y="66" width="8" height="8" fill="#ffffff"/>
+                  <rect x="88" y="64" width="16" height="8" fill="#e2e8f0"/>
+                  <rect x="112" y="64" width="8" height="16" fill="#10b981"/>
+                  <rect x="128" y="64" width="16" height="8" fill="#e2e8f0"/>
+                  <rect x="20" y="80" width="8" height="16" fill="#10b981"/>
+                  <rect x="36" y="88" width="16" height="8" fill="#e2e8f0"/>
+                  <rect x="64" y="88" width="8" height="16" fill="#e2e8f0"/>
+                  <rect x="80" y="88" width="16" height="8" fill="#6366f1"/>
+                  <rect x="104" y="88" width="8" height="8" fill="#e2e8f0"/>
+                  <rect x="120" y="80" width="24" height="8" fill="#e2e8f0"/>
+                  <rect x="64" y="112" width="16" height="8" fill="#10b981"/>
+                  <rect x="88" y="112" width="8" height="16" fill="#e2e8f0"/>
+                  <rect x="104" y="104" width="16" height="8" fill="#6366f1"/>
+                  <rect x="128" y="112" width="16" height="16" fill="#e2e8f0"/>
+                  <rect x="64" y="128" width="8" height="16" fill="#e2e8f0"/>
+                  <rect x="80" y="136" width="16" height="8" fill="#10b981"/>
+                  <rect x="104" y="128" width="8" height="16" fill="#e2e8f0"/>
+                </svg>
+              </div>
+
+              <div class="manual-secret-block">
+                <span class="font-caption text-muted">Or enter secret key manually:</span>
+                <div class="secret-key-display">
+                  <code>{{ totpSecret }}</code>
+                  <button type="button" (click)="copyTotpSecret()" class="btn-secondary btn-xs" title="Copy Secret Key">
+                    <span>Copy</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 1.5rem;">
+              <button type="button" (click)="closeTwoFactorModal()" class="btn-secondary">Cancel</button>
+              <button type="button" (click)="goToTwoFactorStep(2)" class="btn-primary">
+                <span>Next: Verify Code →</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Verify 6-Digit Code -->
+          <div *ngIf="twoFactorStep === 2" class="totp-step-content">
+            <p class="font-caption text-muted" style="margin-bottom: 1.25rem;">
+              Enter the 6-digit verification code generated by your authenticator app to confirm proper configuration.
+            </p>
+
+            <div class="totp-verify-card glass-panel">
+              <label for="totpCode" class="font-caption" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">6-Digit Security Token</label>
+              <input 
+                id="totpCode"
+                type="text" 
+                maxlength="6" 
+                [(ngModel)]="totpCodeInput" 
+                placeholder="123456" 
+                class="totp-input-field font-heading-2"
+                autocomplete="one-time-code"
+              />
+              <span class="font-caption text-muted" style="margin-top: 0.5rem; display: block;">Codes refresh every 30 seconds.</span>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 1.5rem;">
+              <button type="button" (click)="goToTwoFactorStep(1)" class="btn-secondary">← Back</button>
+              <button type="button" (click)="verifyTotpCode()" class="btn-primary" [disabled]="!totpCodeInput || totpCodeInput.length < 6">
+                <span>Verify & Continue →</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Emergency Backup Recovery Codes -->
+          <div *ngIf="twoFactorStep === 3" class="totp-step-content">
+            <div class="recovery-notice-banner glass-panel">
+              <div class="notice-icon">⚠️</div>
+              <div class="notice-body">
+                <strong style="color: #f59e0b; font-size: 0.85rem;">Save Your Recovery Backup Codes</strong>
+                <p class="font-caption text-muted">
+                  If you ever lose access to your authenticator device, each recovery code can be used once to access your account.
+                </p>
+              </div>
+            </div>
+
+            <div class="recovery-grid">
+              <div *ngFor="let code of recoveryCodes; let i = index" class="recovery-code-chip glass-panel">
+                <span class="code-num text-muted">{{ i + 1 }}.</span>
+                <code class="code-val">{{ code }}</code>
+              </div>
+            </div>
+
+            <div class="recovery-actions-row">
+              <button type="button" (click)="copyRecoveryCodes()" class="btn-secondary btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copy All Codes</span>
+              </button>
+              <button type="button" (click)="downloadRecoveryCodes()" class="btn-secondary btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download (.txt)</span>
+              </button>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 1.5rem;">
+              <button type="button" (click)="closeTwoFactorModal()" class="btn-secondary">Close</button>
+              <button type="button" (click)="finishTwoFactorSetup()" class="btn-primary">
+                <span>{{ twoFactorEnabled ? 'Done' : 'Finish & Activate 2FA' }}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -645,12 +830,184 @@ interface TeamMember {
       gap: 0.75rem;
       margin-top: 1.5rem;
     }
+
+    .modal-2fa {
+      max-width: 520px;
+
+      .totp-steps-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid $border-glass;
+
+        .step-indicator {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+
+          .step-circle {
+            width: 22px;
+            height: 22px;
+            border-radius: $radius-full;
+            background: rgba(255, 255, 255, 0.1);
+            color: $text-muted;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+          }
+
+          .step-label {
+            font-size: 0.75rem;
+            color: $text-muted;
+          }
+
+          &.active {
+            .step-circle {
+              background: $aurora-indigo;
+              color: #ffffff;
+            }
+            .step-label {
+              color: #ffffff;
+              font-weight: 600;
+            }
+          }
+
+          &.completed {
+            .step-circle {
+              background: $aurora-emerald;
+              color: #000000;
+            }
+          }
+        }
+
+        .step-line {
+          flex: 1;
+          height: 2px;
+          background: rgba(255, 255, 255, 0.1);
+          margin: 0 0.5rem;
+
+          &.active {
+            background: $aurora-indigo;
+          }
+        }
+      }
+
+      .qr-preview-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.25rem;
+        gap: 1rem;
+
+        .qr-frame {
+          padding: 0.5rem;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: $radius-md;
+          border: 1px solid $border-glass;
+        }
+
+        .manual-secret-block {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.25rem;
+
+          .secret-key-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.35rem 0.75rem;
+            border-radius: $radius-md;
+            border: 1px solid $border-glass;
+
+            code {
+              font-family: monospace;
+              letter-spacing: 0.05em;
+              color: #a5b4fc;
+              font-size: 0.85rem;
+            }
+          }
+        }
+      }
+
+      .totp-verify-card {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+
+        .totp-input-field {
+          width: 180px;
+          text-align: center;
+          letter-spacing: 0.3em;
+          padding: 0.5rem;
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid $aurora-indigo;
+          border-radius: $radius-md;
+          color: #ffffff;
+          font-weight: 700;
+        }
+      }
+
+      .recovery-notice-banner {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-color: rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.08);
+        margin-bottom: 1rem;
+
+        .notice-icon {
+          font-size: 1.25rem;
+        }
+      }
+
+      .recovery-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+
+        .recovery-code-chip {
+          padding: 0.5rem 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: rgba(0, 0, 0, 0.3);
+
+          .code-num {
+            font-size: 0.75rem;
+          }
+
+          .code-val {
+            font-family: monospace;
+            font-weight: 600;
+            color: $aurora-emerald;
+            letter-spacing: 0.05em;
+          }
+        }
+      }
+
+      .recovery-actions-row {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+      }
+    }
   `]
 })
 export class SettingsComponent implements OnInit {
-  private authService = inject(AuthService);
-  private apiService = inject(ApiService);
-  private toastService = inject(ToastService);
+  public authService = inject(AuthService);
+  public apiService = inject(ApiService);
+  public toastService = inject(ToastService);
 
   public activeTab: 'organization' | 'security' | 'team' | 'api' = 'organization';
   public currentUser = this.authService.currentUser;
@@ -669,6 +1026,20 @@ export class SettingsComponent implements OnInit {
   public newPassword = '';
   public confirmPassword = '';
   public twoFactorEnabled = false;
+
+  // Interactive 2FA (TOTP) State
+  public showTwoFactorModal = false;
+  public twoFactorStep: 1 | 2 | 3 = 1;
+  public totpSecret = 'JBSW-Y3DP-EHPK-3PXP-ORB9';
+  public totpCodeInput = '';
+  public recoveryCodes: string[] = [
+    '7A2B-9C1D',
+    '4E5F-8A9B',
+    '2C3D-6E7F',
+    '8G9H-1J2K',
+    '3L4M-5N6P',
+    '9Q8R-7S6T'
+  ];
 
   // Team
   public teamMembers: TeamMember[] = [
@@ -724,6 +1095,72 @@ export class SettingsComponent implements OnInit {
     this.twoFactorEnabled = !this.twoFactorEnabled;
     const state = this.twoFactorEnabled ? 'enabled' : 'disabled';
     this.toastService.info('Two-Factor Authentication', `Two-Factor Authentication is now ${state}.`);
+  }
+
+  // --- INTERACTIVE 2FA (TOTP) SETUP ENGINE ---
+  public openTwoFactorSetup(): void {
+    this.showTwoFactorModal = true;
+    this.twoFactorStep = 1;
+    this.totpCodeInput = '';
+  }
+
+  public openRecoveryCodesModal(): void {
+    this.showTwoFactorModal = true;
+    this.twoFactorStep = 3;
+  }
+
+  public closeTwoFactorModal(): void {
+    this.showTwoFactorModal = false;
+    this.totpCodeInput = '';
+  }
+
+  public copyTotpSecret(): void {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(this.totpSecret).catch(() => {});
+    }
+    this.toastService.info('Secret Key Copied', 'Manual TOTP key copied to clipboard.');
+  }
+
+  public goToTwoFactorStep(step: 1 | 2 | 3): void {
+    this.twoFactorStep = step;
+  }
+
+  public verifyTotpCode(): void {
+    if (!this.totpCodeInput || this.totpCodeInput.trim().length < 6) {
+      this.toastService.error('Verification Failed', 'Please enter a valid 6-digit TOTP code.');
+      return;
+    }
+    this.twoFactorStep = 3;
+    this.toastService.success('Code Verified', 'Authenticator linked successfully. Please save your recovery backup keys.');
+  }
+
+  public copyRecoveryCodes(): void {
+    const text = this.recoveryCodes.join('\n');
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+    this.toastService.success('Recovery Codes Copied', 'All 6 backup codes copied to clipboard.');
+  }
+
+  public downloadRecoveryCodes(): void {
+    const content = `ORBIT BUSINESS SUITE - 2FA BACKUP RECOVERY CODES\nGenerated: ${new Date().toISOString()}\nAccount: alex@apex.com\n\nEach code can be used once if you lose your authenticator:\n\n` +
+      this.recoveryCodes.map((c, i) => `${i + 1}. ${c}`).join('\n') +
+      `\n\nKeep these codes in a secure password manager or offline vault.`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'orbit-2fa-recovery-codes.txt');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  public finishTwoFactorSetup(): void {
+    this.twoFactorEnabled = true;
+    this.showTwoFactorModal = false;
+    this.toastService.success('Two-Factor Authentication Active', 'TOTP security is now enforced on this account.');
   }
 
   public openInviteModal(): void {

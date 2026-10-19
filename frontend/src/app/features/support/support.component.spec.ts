@@ -162,4 +162,99 @@ describe('SupportComponent', () => {
     component.exportToCsv();
     expect(document.createElement).toHaveBeenCalledWith('a');
   });
+
+  it('should format file sizes and map file extensions to icons', () => {
+    expect(component.formatFileSize(0)).toBe('0 B');
+    expect(component.formatFileSize(1024)).toBe('1 KB');
+    expect(component.formatFileSize(1048576)).toBe('1 MB');
+
+    expect(component.getFileIcon('crash.log')).toBe('📄');
+    expect(component.getFileIcon('config.json')).toBe('⚙️');
+    expect(component.getFileIcon('error.png')).toBe('🖼️');
+    expect(component.getFileIcon('report.pdf')).toBe('📕');
+    expect(component.getFileIcon('metrics.csv')).toBe('📊');
+    expect(component.getFileIcon('archive.zip')).toBe('📎');
+  });
+
+  it('should manage staged attachments for ticket creation', () => {
+    component.createAttachments = [
+      { id: '1', name: 'app.log', size: 2048, sizeFormatted: '2 KB', type: 'text/plain', icon: '📄' },
+      { id: '2', name: 'trace.json', size: 4096, sizeFormatted: '4 KB', type: 'application/json', icon: '⚙️' }
+    ];
+
+    expect(component.createAttachments.length).toBe(2);
+    component.removeCreateAttachment(0);
+    expect(component.createAttachments.length).toBe(1);
+    expect(component.createAttachments[0].name).toBe('trace.json');
+  });
+
+  it('should submit ticket and include attachment metadata in description', () => {
+    spyOn(apiService, 'createTicket').and.returnValue(of({
+      success: true,
+      data: createDummyTicket({ id: 't-new', subject: 'System crash' })
+    }));
+    spyOn(component.toastService, 'success');
+
+    component.createSubject = 'Memory leak in worker';
+    component.createDescription = 'Out of memory errors observed after 48h';
+    component.createCustomerId = 'cust-1';
+    component.createAttachments = [
+      { id: 'att-1', name: 'heapdump.log', size: 1048576, sizeFormatted: '1 MB', type: 'text/plain', icon: '📄' }
+    ];
+
+    component.submitCreateTicket();
+
+    expect(apiService.createTicket).toHaveBeenCalledWith(jasmine.objectContaining({
+      subject: 'Memory leak in worker',
+      description: jasmine.stringMatching(/heapdump\.log \(1 MB\)/)
+    }));
+    expect(component.toastService.success).toHaveBeenCalled();
+  });
+
+  it('should manage and append attachments when posting comments', () => {
+    const dummyTicket = createDummyTicket({ id: 't-1' });
+    component.selectedTicket = dummyTicket;
+    component.newCommentText = 'Here is the network trace';
+    component.newCommentAttachments = [
+      { id: 'att-com-1', name: 'network.har', size: 2048, sizeFormatted: '2 KB', type: 'application/json', icon: '📎' }
+    ];
+
+    spyOn(apiService, 'addTicketComment').and.returnValue(of({
+      success: true,
+      data: {
+        id: 'c-1',
+        ticketId: 't-1',
+        authorId: 'u-1',
+        authorName: 'Agent',
+        commentText: 'Here is the network trace [Attachment: network.har (2 KB)]',
+        isInternal: false,
+        createdAtUtc: new Date().toISOString()
+      }
+    }));
+
+    component.submitComment();
+
+    expect(apiService.addTicketComment).toHaveBeenCalledWith('t-1', jasmine.objectContaining({
+      commentText: jasmine.stringMatching(/\[Attachment: network\.har \(2 KB\)\]/)
+    }));
+    expect(component.newCommentAttachments.length).toBe(0);
+    expect(component.newCommentText).toBe('');
+  });
+
+  it('should download attachment file', () => {
+    spyOn(document, 'createElement').and.callThrough();
+    spyOn(component.toastService, 'info');
+
+    component.downloadAttachment({
+      id: 'att-1',
+      name: 'server.log',
+      size: 512,
+      sizeFormatted: '512 B',
+      type: 'text/plain',
+      icon: '📄'
+    });
+
+    expect(document.createElement).toHaveBeenCalledWith('a');
+    expect(component.toastService.info).toHaveBeenCalledWith('Downloading File', jasmine.any(String));
+  });
 });

@@ -136,5 +136,58 @@ describe('SettingsComponent', () => {
     component.exportTeamCsv();
     expect(document.createElement).toHaveBeenCalledWith('a');
   });
+
+  it('should manage 2FA TOTP modal wizard steps', () => {
+    component.openTwoFactorSetup();
+    expect(component.showTwoFactorModal).toBeTrue();
+    expect(component.twoFactorStep as number).toBe(1);
+
+    component.goToTwoFactorStep(2);
+    expect(component.twoFactorStep as number).toBe(2);
+
+    component.openRecoveryCodesModal();
+    expect(component.twoFactorStep as number).toBe(3);
+
+    component.closeTwoFactorModal();
+    expect(component.showTwoFactorModal).toBeFalse();
+  });
+
+  it('should copy TOTP secret and trigger toast info', () => {
+    spyOn(toastService, 'info');
+    component.copyTotpSecret();
+    expect(toastService.info).toHaveBeenCalledWith('Secret Key Copied', jasmine.any(String));
+  });
+
+  it('should validate 6-digit verification code before advancing to recovery codes', () => {
+    spyOn(toastService, 'error');
+    spyOn(toastService, 'success');
+
+    component.twoFactorStep = 2;
+    component.totpCodeInput = '12';
+    component.verifyTotpCode();
+    expect(toastService.error).toHaveBeenCalledWith('Verification Failed', jasmine.any(String));
+    expect(component.twoFactorStep as number).toBe(2);
+
+    component.totpCodeInput = '482910';
+    component.verifyTotpCode();
+    expect(toastService.success).toHaveBeenCalledWith('Code Verified', jasmine.any(String));
+    expect(component.twoFactorStep as number).toBe(3);
+  });
+
+  it('should copy and download backup recovery codes and activate 2FA', () => {
+    spyOn(toastService, 'success');
+    spyOn(document, 'createElement').and.callThrough();
+
+    component.copyRecoveryCodes();
+    expect(toastService.success).toHaveBeenCalledWith('Recovery Codes Copied', jasmine.any(String));
+
+    component.downloadRecoveryCodes();
+    expect(document.createElement).toHaveBeenCalledWith('a');
+
+    component.finishTwoFactorSetup();
+    expect(component.twoFactorEnabled).toBeTrue();
+    expect(component.showTwoFactorModal).toBeFalse();
+    expect(toastService.success).toHaveBeenCalledWith('Two-Factor Authentication Active', jasmine.any(String));
+  });
 });
 

@@ -212,4 +212,100 @@ describe('TasksComponent', () => {
 
     expect(document.createElement).toHaveBeenCalledWith('a');
   });
+
+  it('should manage import modal lifecycle and reset import state', () => {
+    component.openImportModal();
+    expect(component.showImportModal).toBeTrue();
+    expect(component.parsedRows.length).toBe(0);
+
+    component.importFileName = 'sprint-tasks.csv';
+    component.parsedRows = [{ title: 'Fix bug' }];
+    component.importErrors = ['Some error'];
+
+    component.closeImportModal();
+    expect(component.showImportModal).toBeFalse();
+    expect(component.importFileName).toBe('');
+    expect(component.parsedRows.length).toBe(0);
+    expect(component.importErrors.length).toBe(0);
+  });
+
+  it('should download CSV tasks template with standard headers', () => {
+    spyOn(component, 'downloadCsvFile');
+    component.downloadTemplate();
+    expect(component.downloadCsvFile).toHaveBeenCalledWith(
+      jasmine.stringMatching(/Title,Description,Priority,Status,DueDate,AssigneeEmail/),
+      'tasks-template.csv'
+    );
+  });
+
+  it('should parse valid CSV text and match assignee email if present', () => {
+    component.employees = [
+      {
+        id: 'emp-10',
+        tenantId: 'tenant-1',
+        employeeNumber: 'EMP-010',
+        firstName: 'Sarah',
+        lastName: 'Vance',
+        fullName: 'Sarah Vance',
+        email: 'sarah@apex.com',
+        jobTitle: 'Lead Architect',
+        departmentId: 'd1',
+        branchId: 'b1',
+        isActive: true
+      }
+    ];
+
+    const validCsv = `Title,Description,Priority,Status,DueDate,AssigneeEmail
+Deploy Redis Cluster,Setup Redis replication across nodes,High,InProgress,2026-11-01,sarah@apex.com
+Migrate to PostgreSQL,Update connection pool settings,Urgent,Todo,2026-11-15,unknown@apex.com`;
+
+    component.parseCsvContent(validCsv);
+
+    expect(component.importErrors.length).toBe(0);
+    expect(component.parsedRows.length).toBe(2);
+    expect(component.parsedRows[0].title).toBe('Deploy Redis Cluster');
+    expect(component.parsedRows[0].priority).toBe('High');
+    expect(component.parsedRows[0].status).toBe('InProgress');
+    expect(component.parsedRows[0].assignedEmployeeId).toBe('emp-10');
+    expect(component.parsedRows[0].assignedEmployeeName).toBe('Sarah Vance');
+
+    expect(component.parsedRows[1].title).toBe('Migrate to PostgreSQL');
+    expect(component.parsedRows[1].assignedEmployeeId).toBeUndefined();
+  });
+
+  it('should reject invalid or empty CSV input', () => {
+    component.parseCsvContent('');
+    expect(component.importErrors).toContain('The selected CSV file is empty.');
+
+    component.importErrors = [];
+    component.parseCsvContent('HeaderOnly\n');
+    expect(component.importErrors).toContain('CSV must contain a header row and at least one data record.');
+
+    component.importErrors = [];
+    component.parseCsvContent('InvalidCol1,InvalidCol2\nVal1,Val2');
+    expect(component.importErrors).toContain('Missing required column: Title');
+  });
+
+  it('should execute import batch and invoke createTask sequentially', () => {
+    spyOn(apiService, 'createTask').and.returnValue(of({
+      success: true,
+      data: createDummyTask('tsk-new', 'Task item', 'Todo')
+    }));
+    spyOn(component, 'loadTasks');
+    spyOn(component.toastService, 'success');
+
+    component.parsedRows = [
+      { title: 'Task 1', description: 'Desc 1', priority: 'High', status: 'Todo' },
+      { title: 'Task 2', description: 'Desc 2', priority: 'Medium', status: 'InProgress' }
+    ];
+
+    component.executeImport();
+
+    expect(apiService.createTask).toHaveBeenCalledTimes(2);
+    expect(component.isImporting).toBeFalse();
+    expect(component.showImportModal).toBeFalse();
+    expect(component.parsedRows.length).toBe(0);
+    expect(component.toastService.success).toHaveBeenCalled();
+    expect(component.loadTasks).toHaveBeenCalled();
+  });
 });

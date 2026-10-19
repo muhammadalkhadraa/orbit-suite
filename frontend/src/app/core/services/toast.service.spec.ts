@@ -69,4 +69,21 @@ describe('ToastService', () => {
     tick(2100);
     expect(count).toBe(0);
   }));
+
+  it('should trigger audio chimes when audioService is enabled', () => {
+    const audioService = (service as any).audioService;
+    spyOn(audioService, 'isEnabled').and.returnValue(true);
+    spyOn(audioService, 'playSuccessChime');
+    spyOn(audioService, 'playWarningChime');
+    spyOn(audioService, 'playErrorChime');
+
+    service.success('Test Success');
+    expect(audioService.playSuccessChime).toHaveBeenCalled();
+
+    service.warning('Test Warning');
+    expect(audioService.playWarningChime).toHaveBeenCalled();
+
+    service.error('Test Error');
+    expect(audioService.playErrorChime).toHaveBeenCalled();
+  });
 });

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../core/models/models';
 
 @Component({
@@ -19,6 +20,10 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
           <p class="font-caption">Cryptographically scoped work item management according to verified role hierarchies</p>
         </div>
         <div class="header-actions">
+          <button (click)="openImportModal()" class="btn-secondary" title="Import Tasks & Sprints from CSV">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Import CSV</span>
+          </button>
           <button (click)="openCreateModal()" class="btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             <span>Create Task</span>
@@ -298,6 +303,108 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
               <button type="submit" class="btn-primary" [disabled]="!newTaskTitle">Create Task</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- MODAL: BULK CSV IMPORT TASKS & SPRINTS -->
+      <div class="modal-backdrop" *ngIf="showImportModal" (click)="closeImportModal()">
+        <div class="modal-card modal-import glass-panel-elevated" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <div class="badge badge-indigo" style="margin-bottom: 0.25rem;">Batch Ingestion Engine</div>
+              <h2 class="font-heading-3">Import Tasks & Sprints from CSV</h2>
+              <p class="font-caption text-muted">Bulk create backlog items, sprint tasks, and roadmap milestones from spreadsheet exports.</p>
+            </div>
+            <button (click)="closeImportModal()" class="modal-close-btn">✕</button>
+          </div>
+
+          <div class="modal-body import-body">
+            <!-- Step 1: Template Download -->
+            <div class="import-step glass-panel">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title font-body-bold">Download Standard CSV Template</div>
+                <p class="step-desc text-muted font-caption">Pre-configured schema with columns: Title, Description, Priority, Status, DueDate, AssigneeEmail.</p>
+                <button type="button" (click)="downloadTemplate()" class="btn-secondary btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Download tasks-template.csv</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Upload CSV -->
+            <div class="import-step glass-panel">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title font-body-bold">Upload CSV Callset</div>
+                <div class="file-dropzone" (click)="fileInput.click()">
+                  <input #fileInput type="file" accept=".csv" (change)="onFileSelected($event)" style="display: none;" />
+                  <div class="dropzone-icon">📁</div>
+                  <div class="dropzone-text" *ngIf="!importFileName">Click or drop a <strong>.csv</strong> file here</div>
+                  <div class="dropzone-text text-emerald" *ngIf="importFileName">Selected: <strong>{{ importFileName }}</strong></div>
+                  <span class="dropzone-sub text-muted">Supports RFC 4180 formatted CSV with commas or quotes</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Validation Errors -->
+            <div *ngIf="importErrors.length > 0" class="import-errors-box">
+              <div class="err-title font-caption text-danger" style="font-weight: 700;">Validation Notice</div>
+              <ul class="error-list">
+                <li *ngFor="let err of importErrors">{{ err }}</li>
+              </ul>
+            </div>
+
+            <!-- Preview -->
+            <div *ngIf="parsedRows.length > 0" class="preview-table-container glass-panel">
+              <div class="preview-header">
+                <span class="preview-title font-body-bold">Parsed Tasks Ready for Ingestion</span>
+                <span class="badge badge-emerald">{{ parsedRows.length }} valid items</span>
+              </div>
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                    <th>Assignee Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of parsedRows | slice:0:8">
+                    <td class="font-bold">{{ row.title }}</td>
+                    <td><span class="badge" [ngClass]="getPriorityBadge(row.priority)">{{ row.priority }}</span></td>
+                    <td><span class="badge badge-indigo">{{ row.status }}</span></td>
+                    <td class="text-muted">{{ row.dueDateUtc ? (row.dueDateUtc | slice:0:10) : 'None' }}</td>
+                    <td class="text-muted">{{ row.assigneeEmail || 'Unassigned' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div *ngIf="parsedRows.length > 8" class="preview-more text-muted font-caption" style="margin-top: 0.5rem; text-align: center;">
+                + {{ parsedRows.length - 8 }} more rows will be created in this batch
+              </div>
+            </div>
+
+            <!-- Ingestion Progress -->
+            <div *ngIf="isImporting" class="import-progress-box">
+              <div class="progress-label">
+                <span>Ingesting tasks into tenant database...</span>
+                <span>{{ importProgress }}%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar-fill" [style.width.%]="importProgress"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" (click)="closeImportModal()" class="btn-secondary" [disabled]="isImporting">Cancel</button>
+            <button type="button" *ngIf="parsedRows.length > 0 && !isImporting" (click)="resetImport()" class="btn-secondary">Clear</button>
+            <button type="button" (click)="executeImport()" class="btn-primary" [disabled]="parsedRows.length === 0 || isImporting">
+              <span>Execute Import ({{ parsedRows.length }})</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -726,11 +833,156 @@ import { TaskItem, TaskPriority, TaskStatus, Employee, Department } from '../../
       gap: 0.75rem;
       margin-top: 1.5rem;
     }
+
+    .modal-import {
+      max-width: 640px;
+
+      .import-body {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 0.5rem;
+      }
+
+      .import-step {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+
+        .step-num {
+          width: 28px;
+          height: 28px;
+          border-radius: $radius-full;
+          background: rgba(99, 102, 241, 0.2);
+          color: $aurora-indigo;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 0.85rem;
+          flex-shrink: 0;
+        }
+
+        .step-content {
+          flex: 1;
+
+          .step-title {
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+          }
+
+          .step-desc {
+            margin-bottom: 0.75rem;
+          }
+        }
+      }
+
+      .file-dropzone {
+        padding: 1.25rem;
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        border-radius: $radius-md;
+        background: rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover {
+          border-color: $aurora-indigo;
+          background: rgba(99, 102, 241, 0.05);
+        }
+
+        .dropzone-icon {
+          font-size: 1.75rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .dropzone-text {
+          font-size: 0.875rem;
+        }
+
+        .dropzone-sub {
+          font-size: 0.75rem;
+          margin-top: 0.25rem;
+        }
+      }
+
+      .import-errors-box {
+        padding: 0.75rem 1rem;
+        border-radius: $radius-md;
+        background: rgba(244, 63, 94, 0.1);
+        border: 1px solid rgba(244, 63, 94, 0.3);
+
+        .error-list {
+          margin: 0.25rem 0 0 1rem;
+          font-size: 0.8rem;
+          color: #fca5a5;
+        }
+      }
+
+      .preview-table-container {
+        padding: 0.75rem;
+        border-radius: $radius-md;
+
+        .preview-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 0.5rem;
+        }
+
+        .preview-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.8rem;
+
+          th {
+            padding: 0.5rem;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            color: $text-muted;
+            border-bottom: 1px solid $border-glass;
+          }
+
+          td {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: $text-primary;
+          }
+        }
+      }
+
+      .import-progress-box {
+        .progress-label {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.8rem;
+          margin-bottom: 0.35rem;
+          color: $text-muted;
+        }
+
+        .progress-track {
+          height: 6px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+          overflow: hidden;
+
+          .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, $aurora-indigo, $aurora-emerald);
+            transition: width 0.3s ease;
+          }
+        }
+      }
+    }
   `]
 })
 export class TasksComponent implements OnInit {
-  private apiService = inject(ApiService);
-  private authService = inject(AuthService);
+  public apiService = inject(ApiService);
+  public authService = inject(AuthService);
+  public toastService = inject(ToastService);
 
   public activeTenant$ = this.authService.activeTenant$;
   public tasks: TaskItem[] = [];
@@ -746,6 +998,14 @@ export class TasksComponent implements OnInit {
   public newTaskDueDate = '';
   public newTaskAssigneeId = '';
   public newTaskDeptId = '';
+
+  // Bulk CSV Import State
+  public showImportModal = false;
+  public importFileName = '';
+  public parsedRows: any[] = [];
+  public importErrors: string[] = [];
+  public isImporting = false;
+  public importProgress = 0;
 
   constructor() {}
 
@@ -886,5 +1146,175 @@ export class TasksComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  // --- BULK CSV IMPORT ENGINE ---
+  public openImportModal(): void {
+    this.showImportModal = true;
+    this.resetImport();
+  }
+
+  public closeImportModal(): void {
+    this.showImportModal = false;
+    this.resetImport();
+  }
+
+  public resetImport(): void {
+    this.importFileName = '';
+    this.parsedRows = [];
+    this.importErrors = [];
+    this.isImporting = false;
+    this.importProgress = 0;
+  }
+
+  public downloadTemplate(): void {
+    const header = 'Title,Description,Priority,Status,DueDate,AssigneeEmail\n';
+    const sample = 'Implement OAuth2 SSO,Integrate SAML/OIDC enterprise single sign-on,Urgent,Todo,2026-11-01,alex@apex.com\nSetup Database Replication,Configure read-replicas in secondary region,High,InProgress,2026-11-15,david@apex.com\nAudit Security Controls,Annual SOC2 compliance policy inspection,Medium,Todo,2026-12-01,marcus@apex.com';
+    this.downloadCsvFile(header + sample, 'tasks-template.csv');
+  }
+
+  public downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  public onFileSelected(event: any): void {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    this.importFileName = file.name;
+    this.importErrors = [];
+    this.parsedRows = [];
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      this.parseCsvContent(text);
+    };
+    reader.readAsText(file);
+  }
+
+  public parseCsvContent(text: string): void {
+    if (!text || !text.trim()) {
+      this.importErrors.push('The selected CSV file is empty.');
+      return;
+    }
+
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) {
+      this.importErrors.push('CSV must contain a header row and at least one data record.');
+      return;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+    const titleIdx = headers.findIndex(h => h.includes('title') || h.includes('task'));
+    const descIdx = headers.findIndex(h => h.includes('desc'));
+    const priorityIdx = headers.findIndex(h => h.includes('priority'));
+    const statusIdx = headers.findIndex(h => h.includes('status'));
+    const dateIdx = headers.findIndex(h => h.includes('due') || h.includes('date'));
+    const emailIdx = headers.findIndex(h => h.includes('email') || h.includes('assignee'));
+
+    if (titleIdx === -1) {
+      this.importErrors.push('Missing required column: Title');
+      return;
+    }
+
+    const validPriorities = ['Low', 'Medium', 'High', 'Urgent'];
+    const validStatuses = ['Todo', 'InProgress', 'InReview', 'Done'];
+
+    const parsed: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+      if (row.length === 0 || !row[titleIdx]) continue;
+
+      let priority: TaskPriority = 'Medium';
+      if (priorityIdx !== -1 && row[priorityIdx]) {
+        const found = validPriorities.find(p => p.toLowerCase() === row[priorityIdx].toLowerCase());
+        if (found) priority = found as TaskPriority;
+      }
+
+      let status: TaskStatus = 'Todo';
+      if (statusIdx !== -1 && row[statusIdx]) {
+        const found = validStatuses.find(s => s.toLowerCase() === row[statusIdx].toLowerCase());
+        if (found) status = found as TaskStatus;
+      }
+
+      const assigneeEmail = emailIdx !== -1 ? row[emailIdx] : '';
+      let assignedEmployeeId: string | undefined = undefined;
+      let assignedEmployeeName: string | undefined = undefined;
+      if (assigneeEmail && this.employees.length > 0) {
+        const matched = this.employees.find(e => e.email.toLowerCase() === assigneeEmail.toLowerCase());
+        if (matched) {
+          assignedEmployeeId = matched.id;
+          assignedEmployeeName = matched.fullName;
+        }
+      }
+
+      parsed.push({
+        title: row[titleIdx],
+        description: descIdx !== -1 ? row[descIdx] : '',
+        priority,
+        status,
+        dueDateUtc: dateIdx !== -1 && row[dateIdx] ? new Date(row[dateIdx]).toISOString() : undefined,
+        assignedEmployeeId,
+        assignedEmployeeName,
+        assigneeEmail
+      });
+    }
+
+    if (parsed.length === 0) {
+      this.importErrors.push('No valid task records could be extracted from CSV.');
+    } else {
+      this.parsedRows = parsed;
+    }
+  }
+
+  public executeImport(): void {
+    if (this.parsedRows.length === 0 || this.isImporting) return;
+    this.isImporting = true;
+    this.importProgress = 10;
+
+    let completed = 0;
+    const total = this.parsedRows.length;
+
+    const processNext = (index: number) => {
+      if (index >= total) {
+        this.isImporting = false;
+        this.importProgress = 100;
+        this.showImportModal = false;
+        this.toastService.success('CSV Import Completed', `Successfully ingested ${total} tasks into backlog.`);
+        this.loadTasks();
+        this.resetImport();
+        return;
+      }
+
+      const item = this.parsedRows[index];
+      this.apiService.createTask({
+        title: item.title,
+        description: item.description,
+        priority: item.priority,
+        dueDateUtc: item.dueDateUtc,
+        assignedEmployeeId: item.assignedEmployeeId
+      }).subscribe({
+        next: () => {
+          completed++;
+          this.importProgress = Math.round((completed / total) * 100);
+          processNext(index + 1);
+        },
+        error: () => {
+          completed++;
+          this.importProgress = Math.round((completed / total) * 100);
+          processNext(index + 1);
+        }
+      });
+    };
+
+    processNext(0);
   }
 }

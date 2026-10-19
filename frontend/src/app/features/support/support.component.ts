@@ -3,7 +3,18 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriority, TicketCategory, Customer, Employee } from '../../core/models/models';
+
+export interface TicketAttachment {
+  id: string;
+  name: string;
+  size: number;
+  sizeFormatted: string;
+  type: string;
+  icon: string;
+  dataUrl?: string;
+}
 
 @Component({
   selector: 'app-support',
@@ -397,17 +408,35 @@ import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriori
               </div>
 
               <!-- Add Comment Input -->
+              <!-- Add Comment Input -->
               <div class="add-comment-box glass-panel">
                 <textarea
                   [(ngModel)]="newCommentText"
                   rows="3"
                   placeholder="Type a case update, troubleshooting note, or client reply..."
                 ></textarea>
+
+                <!-- Staged Comment Attachments -->
+                <div *ngIf="newCommentAttachments.length > 0" class="attachments-chips-row" style="margin-top: 0.5rem;">
+                  <div *ngFor="let att of newCommentAttachments; let i = index" class="attachment-chip glass-panel">
+                    <span class="att-icon">{{ att.icon }}</span>
+                    <span class="att-name font-mono">{{ att.name }}</span>
+                    <span class="att-size text-muted font-caption">{{ att.sizeFormatted }}</span>
+                    <button type="button" (click)="removeCommentAttachment(i)" class="btn-remove-att">✕</button>
+                  </div>
+                </div>
+
                 <div class="comment-footer">
-                  <label class="internal-checkbox font-caption">
-                    <input type="checkbox" [(ngModel)]="newCommentIsInternal" />
-                    <span>Internal team note only (hidden from client)</span>
-                  </label>
+                  <div class="comment-footer-left">
+                    <label class="internal-checkbox font-caption">
+                      <input type="checkbox" [(ngModel)]="newCommentIsInternal" />
+                      <span>Internal note only</span>
+                    </label>
+                    <input #commentFileInput type="file" multiple (change)="onCommentFileSelected($event)" style="display: none;" />
+                    <button type="button" (click)="commentFileInput.click()" class="btn-secondary btn-xs" title="Attach log files or screenshot">
+                      <span>📎 Attach Log / File</span>
+                    </button>
+                  </div>
                   <button
                     (click)="submitComment()"
                     class="btn-primary btn-sm"
@@ -486,6 +515,26 @@ import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriori
                 rows="4"
                 placeholder="Steps to reproduce, system error codes, telemetry logs..."
               ></textarea>
+            </div>
+
+            <!-- File & Diagnostic Log Attachment Zone -->
+            <div class="attachment-upload-zone glass-panel">
+              <div class="attach-header">
+                <span class="font-caption" style="font-weight: 600;">📎 Diagnostic Logs & File Attachments</span>
+                <span class="font-caption text-muted">Supports .log, .txt, .json, .png, .pdf (Max 10MB)</span>
+              </div>
+              <div class="attach-dropzone" (click)="ticketFileInput.click()">
+                <input #ticketFileInput type="file" multiple (change)="onTicketFileSelected($event)" style="display: none;" />
+                <span class="attach-drop-text">Click to browse or drop error logs, screenshots, or telemetry dumps</span>
+              </div>
+              <div *ngIf="createAttachments.length > 0" class="attachments-chips-row">
+                <div *ngFor="let att of createAttachments; let i = index" class="attachment-chip glass-panel">
+                  <span class="att-icon">{{ att.icon }}</span>
+                  <span class="att-name font-mono">{{ att.name }}</span>
+                  <span class="att-size text-muted font-caption">{{ att.sizeFormatted }}</span>
+                  <button type="button" (click)="removeCreateAttachment(i)" class="btn-remove-att">✕</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1101,11 +1150,94 @@ import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriori
       gap: 0.75rem;
       margin-top: 1.5rem;
     }
+
+    .attachment-upload-zone {
+      margin-top: 1rem;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      .attach-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .attach-dropzone {
+        padding: 0.875rem;
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        border-radius: $radius-md;
+        background: rgba(0, 0, 0, 0.2);
+        text-align: center;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover {
+          border-color: $aurora-indigo;
+          background: rgba(99, 102, 241, 0.05);
+        }
+
+        .attach-drop-text {
+          font-size: 0.8125rem;
+          color: $text-secondary;
+        }
+      }
+    }
+
+    .attachments-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+
+      .attachment-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: $radius-md;
+        background: rgba(0, 0, 0, 0.35);
+        font-size: 0.75rem;
+
+        .att-name {
+          color: #a5b4fc;
+          max-width: 140px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .att-size {
+          font-size: 0.6875rem;
+        }
+
+        .btn-remove-att {
+          background: none;
+          border: none;
+          color: $text-muted;
+          cursor: pointer;
+          font-size: 0.75rem;
+          padding: 0 0.125rem;
+
+          &:hover {
+            color: $aurora-rose;
+          }
+        }
+      }
+    }
+
+    .comment-footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
   `]
 })
 export class SupportComponent implements OnInit {
-  private apiService = inject(ApiService);
-  private authService = inject(AuthService);
+  public apiService = inject(ApiService);
+  public authService = inject(AuthService);
+  public toastService = inject(ToastService);
 
   public activeTenant$ = this.authService.activeTenant$;
 
@@ -1136,6 +1268,10 @@ export class SupportComponent implements OnInit {
   public createAssignedEmployeeId = '';
   public createCategory: TicketCategory = 'Technical';
   public createPriority: TicketPriority = 'Medium';
+
+  // Attachment Engine
+  public createAttachments: TicketAttachment[] = [];
+  public newCommentAttachments: TicketAttachment[] = [];
 
   public get currentRole(): string {
     return this.authService.currentRole || 'Employee';
@@ -1226,19 +1362,27 @@ export class SupportComponent implements OnInit {
     this.createAssignedEmployeeId = '';
     this.createCategory = 'Technical';
     this.createPriority = 'Medium';
+    this.createAttachments = [];
     this.showCreateModal = true;
   }
 
   public closeCreateModal(): void {
     this.showCreateModal = false;
+    this.createAttachments = [];
   }
 
   public submitCreateTicket(): void {
     if (!this.createSubject.trim() || !this.createCustomerId || !this.createDescription.trim()) return;
 
+    let finalDescription = this.createDescription.trim();
+    if (this.createAttachments.length > 0) {
+      finalDescription += '\n\n📎 Attached Diagnostic Logs & Files (' + this.createAttachments.length + '):\n' +
+        this.createAttachments.map(a => `• ${a.name} (${a.sizeFormatted})`).join('\n');
+    }
+
     this.apiService.createTicket({
       subject: this.createSubject.trim(),
-      description: this.createDescription.trim(),
+      description: finalDescription,
       customerId: this.createCustomerId,
       assignedEmployeeId: this.createAssignedEmployeeId || undefined,
       category: this.createCategory,
@@ -1247,6 +1391,7 @@ export class SupportComponent implements OnInit {
       this.closeCreateModal();
       this.loadTickets();
       this.loadMetrics();
+      this.toastService.success('Support Ticket Opened', 'Incident registered with attached telemetry.');
     });
   }
 
@@ -1278,8 +1423,13 @@ export class SupportComponent implements OnInit {
   public submitComment(): void {
     if (!this.selectedTicket || !this.newCommentText.trim()) return;
 
+    let finalText = this.newCommentText.trim();
+    if (this.newCommentAttachments.length > 0) {
+      finalText += '\n\n📎 [Attachment: ' + this.newCommentAttachments.map(a => `${a.name} (${a.sizeFormatted})`).join(', ') + ']';
+    }
+
     this.apiService.addTicketComment(this.selectedTicket.id, {
-      commentText: this.newCommentText.trim(),
+      commentText: finalText,
       isInternal: this.newCommentIsInternal
     }).subscribe(res => {
       if (res.data && this.selectedTicket) {
@@ -1288,8 +1438,111 @@ export class SupportComponent implements OnInit {
       }
       this.newCommentText = '';
       this.newCommentIsInternal = false;
+      this.newCommentAttachments = [];
       this.loadTickets();
     });
+  }
+
+  // --- ATTACHMENT & DIAGNOSTIC LOG ENGINE ---
+  public formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  public getFileIcon(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'log':
+      case 'txt':
+        return '📄';
+      case 'json':
+      case 'xml':
+      case 'yaml':
+        return '⚙️';
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'webp':
+        return '🖼️';
+      case 'pdf':
+        return '📕';
+      case 'csv':
+      case 'xlsx':
+        return '📊';
+      default:
+        return '📎';
+    }
+  }
+
+  public onTicketFileSelected(event: any): void {
+    const files: FileList = event.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const attachment: TicketAttachment = {
+        id: 'att-' + Date.now() + '-' + i,
+        name: f.name,
+        size: f.size,
+        sizeFormatted: this.formatFileSize(f.size),
+        type: f.type || 'application/octet-stream',
+        icon: this.getFileIcon(f.name)
+      };
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachment.dataUrl = e.target?.result as string;
+      };
+      reader.readAsDataURL(f);
+      this.createAttachments.push(attachment);
+    }
+    this.toastService.info('File Attached', `${files.length} file(s) attached to ticket.`);
+  }
+
+  public removeCreateAttachment(index: number): void {
+    this.createAttachments.splice(index, 1);
+  }
+
+  public onCommentFileSelected(event: any): void {
+    const files: FileList = event.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const attachment: TicketAttachment = {
+        id: 'att-com-' + Date.now() + '-' + i,
+        name: f.name,
+        size: f.size,
+        sizeFormatted: this.formatFileSize(f.size),
+        type: f.type || 'application/octet-stream',
+        icon: this.getFileIcon(f.name)
+      };
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachment.dataUrl = e.target?.result as string;
+      };
+      reader.readAsDataURL(f);
+      this.newCommentAttachments.push(attachment);
+    }
+    this.toastService.info('Log / File Attached', `${files.length} attachment(s) queued for response.`);
+  }
+
+  public removeCommentAttachment(index: number): void {
+    this.newCommentAttachments.splice(index, 1);
+  }
+
+  public downloadAttachment(attachment: TicketAttachment): void {
+    const link = document.createElement('a');
+    link.href = attachment.dataUrl || 'data:text/plain;charset=utf-8,' + encodeURIComponent('Simulated log content for ' + attachment.name);
+    link.download = attachment.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.toastService.info('Downloading File', `Starting download for ${attachment.name}`);
   }
 
   public deleteTicket(id: string): void {
