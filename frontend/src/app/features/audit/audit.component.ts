@@ -24,6 +24,10 @@ import { AuditLog, AuditLogFilter, TenantRole } from '../../core/models/models';
           </p>
         </div>
         <div class="header-actions">
+          <button class="btn btn-secondary" (click)="exportAuditCsv()" title="Export Audit Log to CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
           <button class="btn btn-secondary" (click)="loadAuditLogs()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
@@ -727,4 +731,31 @@ export class AuditComponent implements OnInit {
     if (act.includes('payment')) return 'badge-amber';
     return 'badge-slate';
   }
+
+  public exportAuditCsv(): void {
+    const headers = ['Timestamp (UTC)', 'Operator Email', 'Action', 'Target Entity', 'Entity ID', 'Client IP', 'Details JSON'];
+    const rows = this.auditLogs.map(log => [
+      `"${log.timestampUtc}"`,
+      `"${(log.userEmail || 'System Process').replace(/"/g, '""')}"`,
+      `"${log.action}"`,
+      `"${log.entityName}"`,
+      `"${log.entityId || ''}"`,
+      `"${log.ipAddress || ''}"`,
+      `"${(log.detailsJson || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`
+    ]);
+
+    this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-audit-trail-${Date.now()}.csv`);
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
+
