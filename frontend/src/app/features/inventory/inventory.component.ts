@@ -31,6 +31,10 @@ import {
           <p class="font-caption">Real-time SKU tracking, multi-branch warehouse distribution, atomic stock adjustments, and immutable movement ledger</p>
         </div>
         <div class="header-actions">
+          <button (click)="exportInventoryCsv()" class="btn-secondary" title="Export Current Inventory / Ledger to CSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export CSV</span>
+          </button>
           <button (click)="openAdjustModal()" class="btn-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             <span>Adjust / Transfer Stock</span>
@@ -1784,4 +1788,48 @@ export class InventoryComponent implements OnInit {
         return 'text-indigo';
     }
   }
+
+  public exportInventoryCsv(): void {
+    if (this.activeTab === 'ledger') {
+      const headers = ['Reference #', 'SKU', 'Product Name', 'Movement Type', 'Quantity', 'Branch Name', 'Reason', 'Timestamp'];
+      const rows = this.filteredMovements.map(m => [
+        `"${m.referenceNumber || ''}"`,
+        `"${m.productSku.replace(/"/g, '""')}"`,
+        `"${m.productName.replace(/"/g, '""')}"`,
+        `"${m.type}"`,
+        `"${m.quantity}"`,
+        `"${(m.branchName || 'Central Warehouse').replace(/"/g, '""')}"`,
+        `"${(m.reason || '').replace(/"/g, '""')}"`,
+        `"${m.timestampUtc || ''}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-inventory-ledger-${Date.now()}.csv`);
+    } else {
+      const headers = ['SKU', 'Product Name', 'Category', 'Unit Price', 'Unit Cost', 'Total Qty On Hand', 'Valuation', 'Reorder Level', 'Is Low Stock', 'Status'];
+      const rows = this.filteredProducts.map(p => [
+        `"${p.sku.replace(/"/g, '""')}"`,
+        `"${p.name.replace(/"/g, '""')}"`,
+        `"${p.category}"`,
+        `"${p.unitPrice}"`,
+        `"${p.unitCost}"`,
+        `"${p.totalQuantityOnHand}"`,
+        `"${p.inventoryValuation || (p.totalQuantityOnHand * p.unitCost)}"`,
+        `"${p.reorderLevel}"`,
+        `"${p.isLowStock ? 'YES' : 'NO'}"`,
+        `"${p.isActive ? 'Active' : 'Inactive'}"`
+      ]);
+      this.downloadCsvFile([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `orbit-inventory-catalog-${Date.now()}.csv`);
+    }
+  }
+
+  private downloadCsvFile(csvContent: string, filename: string): void {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 }
+
