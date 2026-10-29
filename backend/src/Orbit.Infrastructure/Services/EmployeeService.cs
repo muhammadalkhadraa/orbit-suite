@@ -96,7 +96,16 @@ public class EmployeeService : IEmployeeService
                 ReportsToEmployeeId = e.ReportsToEmployeeId,
                 ReportsToName = e.ReportsTo != null ? $"{e.ReportsTo.FirstName} {e.ReportsTo.LastName}".Trim() : null,
                 IsActive = e.IsActive,
-                HireDateUtc = e.HireDateUtc
+                HireDateUtc = e.HireDateUtc,
+                BaseSalary = e.BaseMonthlySalary,
+                HourlyRate = e.HourlyRate,
+                OvertimeRate = e.OvertimeRate,
+                ContractType = e.ContractType,
+                ContractStartDateUtc = e.ContractStartDateUtc,
+                ContractEndDateUtc = e.ContractEndDateUtc,
+                ContractNotes = e.ContractNotes,
+                VacationDaysAllocated = e.VacationDaysAllocated,
+                VacationDaysRemaining = e.VacationDaysRemaining
             })
             .ToListAsync(cancellationToken);
 
@@ -128,7 +137,16 @@ public class EmployeeService : IEmployeeService
                 ReportsToEmployeeId = e.ReportsToEmployeeId,
                 ReportsToName = e.ReportsTo != null ? $"{e.ReportsTo.FirstName} {e.ReportsTo.LastName}".Trim() : null,
                 IsActive = e.IsActive,
-                HireDateUtc = e.HireDateUtc
+                HireDateUtc = e.HireDateUtc,
+                BaseSalary = e.BaseMonthlySalary,
+                HourlyRate = e.HourlyRate,
+                OvertimeRate = e.OvertimeRate,
+                ContractType = e.ContractType,
+                ContractStartDateUtc = e.ContractStartDateUtc,
+                ContractEndDateUtc = e.ContractEndDateUtc,
+                ContractNotes = e.ContractNotes,
+                VacationDaysAllocated = e.VacationDaysAllocated,
+                VacationDaysRemaining = e.VacationDaysRemaining
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -173,12 +191,23 @@ public class EmployeeService : IEmployeeService
 
             if (!membershipExists)
             {
+                // IT personnel receive Admin clearance across all screens; other staff are standard Employees
+                var assignedRole = TenantRole.Employee;
+                if (request.DepartmentId.HasValue)
+                {
+                    var dept = await _context.Departments.FirstOrDefaultAsync(d => d.Id == request.DepartmentId.Value, cancellationToken);
+                    if (dept != null && (dept.Code == "IT" || dept.Name.ToLower().Contains("information technology")))
+                    {
+                        assignedRole = TenantRole.Admin;
+                    }
+                }
+
                 var membership = new TenantMembership
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantId,
                     UserId = user.Id,
-                    Role = TenantRole.Employee,
+                    Role = assignedRole,
                     Status = MembershipStatus.Active,
                     JoinedAtUtc = DateTime.UtcNow
                 };
@@ -187,6 +216,12 @@ public class EmployeeService : IEmployeeService
 
             createdUserId = user.Id;
         }
+
+        var baseSalary = request.BaseSalary > 0 ? request.BaseSalary : 3500.00m;
+        // Formula specified: Day price = Salary / 30, Hour price = Day price / 9
+        var dailyRate = Math.Round(baseSalary / 30.0m, 2);
+        var hourlyRate = request.HourlyRate > 0 ? request.HourlyRate : Math.Round(dailyRate / 9.0m, 2);
+        var overtimeRate = request.OvertimeRate > 0 ? request.OvertimeRate : Math.Round(hourlyRate * 1.5m, 2);
 
         var employee = new EmployeeProfile
         {
@@ -203,7 +238,15 @@ public class EmployeeService : IEmployeeService
             DepartmentId = request.DepartmentId,
             ReportsToEmployeeId = request.ReportsToEmployeeId,
             HireDateUtc = request.HireDateUtc ?? DateTime.UtcNow,
-            IsActive = true
+            IsActive = true,
+            ContractType = string.IsNullOrWhiteSpace(request.ContractType) ? "Permanent Full-Time" : request.ContractType,
+            ContractStartDateUtc = request.ContractStartDateUtc ?? request.HireDateUtc ?? DateTime.UtcNow,
+            ContractEndDateUtc = request.ContractEndDateUtc,
+            ContractNotes = request.ContractNotes,
+            BaseMonthlySalary = baseSalary,
+            HourlyRate = hourlyRate,
+            OvertimeRate = overtimeRate,
+            VacationDaysAllocated = request.VacationDaysAllocated > 0 ? request.VacationDaysAllocated : 21
         };
 
         _context.Employees.Add(employee);
@@ -228,6 +271,25 @@ public class EmployeeService : IEmployeeService
         employee.ReportsToEmployeeId = request.ReportsToEmployeeId;
         employee.IsActive = request.IsActive;
         employee.HireDateUtc = request.HireDateUtc;
+
+        if (request.BaseSalary > 0)
+        {
+            employee.BaseMonthlySalary = request.BaseSalary;
+            var dRate = Math.Round(request.BaseSalary / 30.0m, 2);
+            employee.HourlyRate = request.HourlyRate > 0 ? request.HourlyRate : Math.Round(dRate / 9.0m, 2);
+            employee.OvertimeRate = request.OvertimeRate > 0 ? request.OvertimeRate : Math.Round(employee.HourlyRate * 1.5m, 2);
+        }
+        else
+        {
+            if (request.HourlyRate > 0) employee.HourlyRate = request.HourlyRate;
+            if (request.OvertimeRate > 0) employee.OvertimeRate = request.OvertimeRate;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ContractType)) employee.ContractType = request.ContractType;
+        if (request.ContractStartDateUtc.HasValue) employee.ContractStartDateUtc = request.ContractStartDateUtc;
+        if (request.ContractEndDateUtc.HasValue) employee.ContractEndDateUtc = request.ContractEndDateUtc;
+        if (request.ContractNotes != null) employee.ContractNotes = request.ContractNotes;
+        if (request.VacationDaysAllocated > 0) employee.VacationDaysAllocated = request.VacationDaysAllocated;
 
         await _context.SaveChangesAsync(cancellationToken);
         await _auditService.LogAsync("Update", nameof(EmployeeProfile), employee.Id.ToString(), request, cancellationToken);

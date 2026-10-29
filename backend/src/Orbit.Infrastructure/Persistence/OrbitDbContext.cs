@@ -49,6 +49,9 @@ public class OrbitDbContext : IdentityDbContext<ApplicationUser>, IApplicationDb
     public DbSet<ShiftSchedule> ShiftSchedules => Set<ShiftSchedule>();
     public DbSet<ReportExportHistory> ReportExports => Set<ReportExportHistory>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ComplianceCertificate> ComplianceCertificates => Set<ComplianceCertificate>();
+    public DbSet<AuditMeeting> AuditMeetings => Set<AuditMeeting>();
+    public DbSet<PayrollRecord> PayrollRecords => Set<PayrollRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -111,6 +114,11 @@ public class OrbitDbContext : IdentityDbContext<ApplicationUser>, IApplicationDb
                 .WithMany(t => t.Departments)
                 .HasForeignKey(x => x.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.ManagerEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.ManagerEmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             b.HasQueryFilter(x => x.TenantId == (_tenantContext.CurrentTenantId ?? Guid.Empty));
         });
@@ -268,7 +276,18 @@ public class OrbitDbContext : IdentityDbContext<ApplicationUser>, IApplicationDb
             b.HasOne(x => x.Customer)
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.RequestingEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.RequestingEmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            b.HasOne(x => x.TargetDepartment)
+                .WithMany()
+                .HasForeignKey(x => x.TargetDepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             b.HasOne(x => x.AssignedEmployee)
                 .WithMany()
@@ -698,6 +717,102 @@ public class OrbitDbContext : IdentityDbContext<ApplicationUser>, IApplicationDb
                 .OnDelete(DeleteBehavior.SetNull);
 
             b.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+
+            b.HasQueryFilter(x => x.TenantId == (_tenantContext.CurrentTenantId ?? Guid.Empty));
+        });
+
+        // 25. ComplianceCertificate Configuration
+        builder.Entity<ComplianceCertificate>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            b.Property(x => x.StandardCode).IsRequired().HasMaxLength(50);
+            b.Property(x => x.CertificateNumber).IsRequired().HasMaxLength(100);
+            b.Property(x => x.IssuingBody).IsRequired().HasMaxLength(150);
+
+            b.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.ResponsibleEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.ResponsibleEmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.ExpiryDateUtc });
+
+            b.HasQueryFilter(x => x.TenantId == (_tenantContext.CurrentTenantId ?? Guid.Empty));
+        });
+
+        // 26. AuditMeeting Configuration
+        builder.Entity<AuditMeeting>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.MeetingNumber).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Location).HasMaxLength(150);
+
+            b.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.LeadAuditorEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.LeadAuditorEmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            b.HasOne(x => x.AuditedDepartment)
+                .WithMany()
+                .HasForeignKey(x => x.AuditedDepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            b.HasIndex(x => new { x.TenantId, x.MeetingNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.ScheduledDateUtc });
+
+            b.HasQueryFilter(x => x.TenantId == (_tenantContext.CurrentTenantId ?? Guid.Empty));
+        });
+
+        // 27. PayrollRecord Configuration
+        builder.Entity<PayrollRecord>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.PayrollNumber).IsRequired().HasMaxLength(50);
+            b.Property(x => x.PayPeriod).IsRequired().HasMaxLength(50);
+
+            b.Property(x => x.BaseSalary).HasPrecision(18, 2);
+            b.Property(x => x.HourlyRate).HasPrecision(18, 2);
+            b.Property(x => x.OvertimeHours).HasPrecision(18, 2);
+            b.Property(x => x.OvertimeRate).HasPrecision(18, 2);
+            b.Property(x => x.OvertimePay).HasPrecision(18, 2);
+            b.Property(x => x.Bonuses).HasPrecision(18, 2);
+            b.Property(x => x.GrossPay).HasPrecision(18, 2);
+            b.Property(x => x.AbsenceDeduction).HasPrecision(18, 2);
+            b.Property(x => x.LatePenaltyDeduction).HasPrecision(18, 2);
+            b.Property(x => x.NegativeVacationDays).HasPrecision(18, 2);
+            b.Property(x => x.VacationDeficitDeduction).HasPrecision(18, 2);
+            b.Property(x => x.TaxRatePercentage).HasPrecision(18, 2);
+            b.Property(x => x.TaxDeduction).HasPrecision(18, 2);
+            b.Property(x => x.SocialSecurityDeduction).HasPrecision(18, 2);
+            b.Property(x => x.TotalDeductions).HasPrecision(18, 2);
+            b.Property(x => x.NetPay).HasPrecision(18, 2);
+
+            b.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasIndex(x => new { x.TenantId, x.PayrollNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.Year, x.Month, x.EmployeeId }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.Status });
 
             b.HasQueryFilter(x => x.TenantId == (_tenantContext.CurrentTenantId ?? Guid.Empty));
         });

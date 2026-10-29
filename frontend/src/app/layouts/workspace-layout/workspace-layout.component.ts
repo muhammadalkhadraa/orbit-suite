@@ -2,12 +2,13 @@ import { Component, HostListener, inject, ElementRef, ViewChild, OnInit, OnDestr
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, interval } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { NetworkService } from '../../core/services/network.service';
 import { IdleTimerService } from '../../core/services/idle-timer.service';
 import { AudioService } from '../../core/services/audio.service';
+import { ActivityService } from '../../core/services/activity.service';
 import { TenantRole } from '../../core/models/models';
 
 export interface CommandPaletteItem {
@@ -66,12 +67,22 @@ export interface AppNotification {
         </div>
 
         <!-- Role Testing Bar -->
+        <!-- Role & Persona Switcher Bar -->
         <div class="demo-role-switcher">
-          <div class="switcher-title">Instant Role Preview</div>
-          <div class="role-pill-group">
-            <button (click)="switchRole('Owner')" class="role-pill" [class.active]="(activeTenant$ | async)?.role === 'Owner'">Owner</button>
-            <button (click)="switchRole('Manager')" class="role-pill" [class.active]="(activeTenant$ | async)?.role === 'Manager'">Manager</button>
-            <button (click)="switchRole('Employee')" class="role-pill" [class.active]="(activeTenant$ | async)?.role === 'Employee'">Employee</button>
+          <div class="switcher-title">PERSONA & CLEARANCE</div>
+          <div class="role-pill-group" style="display: flex; flex-direction: column; gap: 0.35rem;">
+            <button (click)="switchPersona('admin')" class="role-pill" [class.active]="isCurrentPersona('admin')" title="Admin / Owner: Unrestricted clearance to all screens">
+              🏢 Admin (All Screens)
+            </button>
+            <button (click)="switchPersona('muhammad')" class="role-pill" [class.active]="isCurrentPersona('muhammad')" title="IT Engineer: Has access to all screens">
+              💻 Muhammad (IT - All Screens)
+            </button>
+            <button (click)="switchPersona('amr')" class="role-pill" [class.active]="isCurrentPersona('amr')" title="HR: Can only access HR screen">
+              👥 Amr (HR Screen Only)
+            </button>
+            <button (click)="switchPersona('abdelrazik')" class="role-pill" [class.active]="isCurrentPersona('abdelrazik')" title="Accounting: Can only access Accounting screen">
+              💵 Abdelrazik (Accounting Only)
+            </button>
           </div>
         </div>
 
@@ -90,77 +101,89 @@ export interface AppNotification {
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/employees" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('employees')" routerLink="/app/employees" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span>Employees</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/organization" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('organization')" routerLink="/app/organization" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Organization</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <div class="nav-section-title">BUSINESS SUITE MODULES</div>
+          <div class="nav-section-title" *ngIf="canAccess('crm') || canAccess('support') || canAccess('inventory') || canAccess('manufacturing') || canAccess('hr') || canAccess('finance')">BUSINESS SUITE MODULES</div>
 
-          <a routerLink="/app/crm" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('crm')" routerLink="/app/crm" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
             <span>CRM & Sales</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/support" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('support')" routerLink="/app/support" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>Customer Support</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/inventory" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('inventory')" routerLink="/app/inventory" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             <span>Inventory & Purchasing</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/manufacturing" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('manufacturing')" routerLink="/app/manufacturing" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             <span>Manufacturing</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/hr" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('hr')" routerLink="/app/hr" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
             <span>HR & Attendance</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/finance" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('activity')" routerLink="/app/activity" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Activity & Live Clock</span>
+            <span class="nav-tag badge-cyan">Radar</span>
+          </a>
+
+          <a *ngIf="canAccess('finance')" routerLink="/app/finance" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             <span>Invoicing & Accounting</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <a routerLink="/app/reports" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('reports')" routerLink="/app/reports" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             <span>Reports & Dashboards</span>
             <span class="nav-tag badge-emerald">Live</span>
           </a>
 
-          <div class="nav-section-title">SECURITY & GOVERNANCE</div>
+          <div class="nav-section-title" *ngIf="canAccess('audit') || canAccess('compliance') || canAccess('settings')">SECURITY & GOVERNANCE</div>
 
-          <a routerLink="/app/audit" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('audit')" routerLink="/app/audit" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <span>Audit Trail</span>
             <span class="nav-tag badge-cyan">Admin</span>
           </a>
 
-          <a routerLink="/app/settings" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('compliance')" routerLink="/app/compliance" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span>Compliance & Audits</span>
+            <span class="nav-tag badge-cyan">ISO</span>
+          </a>
+
+          <a *ngIf="canAccess('settings')" routerLink="/app/settings" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             <span>Workspace Settings</span>
             <span class="nav-tag badge-violet">Config</span>
           </a>
 
-          <a routerLink="/app/billing" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
+          <a *ngIf="canAccess('billing')" routerLink="/app/billing" routerLinkActive="active" (click)="closeMobile()" class="nav-item">
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <span>Plans & Billing</span>
             <span class="nav-tag badge-amber">Pro</span>
@@ -205,6 +228,87 @@ export interface AppNotification {
           </button>
 
           <div class="header-right">
+            <!-- Live Time Clock Tracker Widget -->
+            <div class="activity-topbar-widget" *ngIf="activityStatus$ | async as actStatus">
+              <!-- If Not Started -->
+              <button *ngIf="actStatus.state === 'NotStarted'" 
+                      (click)="openGlobalClockModal('Start')" 
+                      class="btn-topbar-clock clock-notstarted" 
+                      title="Clock-in for today (Standard window: 08:00 - 08:10 AM)">
+                <span class="clock-pulse-amber"></span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                <span>Start Shift (8:00-8:10 AM)</span>
+              </button>
+
+              <!-- If Working -->
+              <div *ngIf="actStatus.state === 'Working'" class="topbar-timer-group">
+                <button (click)="openGlobalClockModal()" class="topbar-timer-badge badge-working-live" title="Active work timer running">
+                  <span class="live-dot-working"></span>
+                  <span class="font-mono">{{ activityService.formatDuration(actStatus.currentWorkSeconds) }}</span>
+                </button>
+                <button (click)="executeQuickClockAction('Break')" class="btn-topbar-action btn-action-break-sm" title="Take a break (1h daily allowance)">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  <span>Break</span>
+                </button>
+                <button (click)="executeQuickClockAction('End')" class="btn-topbar-action btn-action-end-sm" title="Close PC & end shift">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                  <span>End</span>
+                </button>
+              </div>
+
+              <!-- If Idle (Auto-Paused after 5 min inactivity) -->
+              <div *ngIf="actStatus.state === 'Idle'" class="topbar-timer-group">
+                <button (click)="openGlobalClockModal()" 
+                        class="topbar-timer-badge badge-idle-live" 
+                        title="Timer auto-paused due to 5 minutes of inactivity. Move mouse to resume.">
+                  <span class="live-dot-idle"></span>
+                  <span class="font-mono">⏸️ Paused (Idle): {{ activityService.formatDuration(actStatus.currentWorkSeconds) }}</span>
+                </button>
+                <button (click)="activityService.resumeFromIdle()" class="btn-topbar-action btn-action-resume-sm" title="Resume timer now">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>Resume</span>
+                </button>
+                <button (click)="executeQuickClockAction('End')" class="btn-topbar-action btn-action-end-sm" title="Close PC & end shift">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                  <span>End</span>
+                </button>
+              </div>
+
+              <!-- If On Break -->
+              <div *ngIf="actStatus.state === 'OnBreak'" class="topbar-timer-group">
+                <button (click)="openGlobalClockModal()" 
+                        class="topbar-timer-badge" 
+                        [ngClass]="actStatus.hasExceededBreak ? 'badge-break-overdue' : 'badge-break-live'"
+                        title="Break timer running (1 hour limit)">
+                  <span class="live-dot-break"></span>
+                  <span class="font-mono">Break: {{ activityService.formatDuration(actStatus.currentBreakSeconds) }}</span>
+                  <span *ngIf="actStatus.hasExceededBreak" class="overdue-tag">FAULT!</span>
+                </button>
+                <button (click)="executeQuickClockAction('Resume')" class="btn-topbar-action btn-action-resume-sm" title="Finish break & resume working">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>Resume</span>
+                </button>
+                <button (click)="executeQuickClockAction('End')" class="btn-topbar-action btn-action-end-sm" title="Close PC & end shift">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                  <span>End</span>
+                </button>
+              </div>
+
+              <!-- If Closed (Split Shift Eligible) -->
+              <div *ngIf="actStatus.state === 'Closed'" class="topbar-timer-group">
+                <button (click)="openGlobalClockModal('Start')" 
+                        class="topbar-timer-badge badge-break-live" 
+                        title="Shift ended earlier. Click to view modal.">
+                  <span class="live-dot-break" style="background: #94a3b8;"></span>
+                  <span class="font-mono">Shift Paused ({{ activityService.formatShortDuration(actStatus.totalWorkSeconds) }})</span>
+                </button>
+                <button (click)="executeQuickClockAction('Start')" class="btn-topbar-action btn-action-resume-sm" title="Reopen / start split shift">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>Reopen Shift</span>
+                </button>
+              </div>
+            </div>
+
             <!-- Tenant Switcher Dropdown -->
             <div class="tenant-selector" *ngIf="(availableTenants$ | async)?.length">
               <select [value]="(activeTenant$ | async)?.id" (change)="onTenantSelect($event)">
@@ -293,6 +397,24 @@ export interface AppNotification {
             </div>
           </div>
         </header>
+
+        <!-- Inactivity Pause Active Banner -->
+        <div *ngIf="(activityStatus$ | async)?.state === 'Idle'" class="inactivity-idle-banner">
+          <div class="banner-inner">
+            <div class="banner-icon">⏸️</div>
+            <div class="banner-text">
+              <strong>Work Timer Paused:</strong> No mouse movement was detected for 5 minutes. The timer stopped to preserve accurate work records.
+              <span class="banner-action-hint">Move your mouse or press any key to resume counting automatically.</span>
+            </div>
+            <button type="button" (click)="activityService.resumeFromIdle()" class="btn-banner-resume">
+              ▶️ Resume Now
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="activityService.idleToast$ | async as toastMsg" class="inactivity-floating-toast">
+          <span>{{ toastMsg }}</span>
+        </div>
 
         <!-- Dynamic Content Router Area -->
         <main class="workspace-content">
@@ -628,7 +750,95 @@ export interface AppNotification {
 
             <div class="health-footer">
               <span class="text-muted font-caption">Last Probed: {{ healthData?.timestamp | date:'mediumTime' }}</span>
-              <button class="btn-primary btn-sm" (click)="closeHealthModal()">Close Telemetry</button>
+        <!-- Global Time Clock Popup Modal -->
+        <div *ngIf="globalClockModalOpen" class="modal-backdrop" (click)="closeGlobalClockModal()">
+          <div class="activity-modal-box glass-panel-elevated" (click)="$event.stopPropagation()">
+            <div class="act-modal-header">
+              <div class="act-modal-title-wrap">
+                <div class="act-clock-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <h2 class="act-modal-title">Employee Time Clock</h2>
+                  <p class="act-modal-subtitle">Authenticate code & password to record activity timestamps</p>
+                </div>
+              </div>
+              <button class="close-btn" (click)="closeGlobalClockModal()">✕</button>
+            </div>
+
+            <!-- Live Workstation Clock -->
+            <div class="act-clock-card">
+              <div class="act-clock-row">
+                <span class="act-digital-clock font-mono">{{ globalClockDisplay }}</span>
+                <span class="act-clock-tz">Workstation Local Time</span>
+              </div>
+              <div class="act-punctuality-banner" [ngClass]="isClockLate() ? 'banner-late' : 'banner-ontime'">
+                <span *ngIf="!isClockLate()">✓ <strong>Standard Window:</strong> Clocking in now (08:00 – 08:10 AM) is <strong>On Time</strong>.</span>
+                <span *ngIf="isClockLate()">⚠️ <strong>Past 08:10 AM:</strong> Starting now will record you as <strong>Late</strong> (+{{ getClockLateMinutes() }}m).</span>
+              </div>
+            </div>
+
+            <!-- Input Fields -->
+            <div class="act-form-body">
+              <div class="form-group">
+                <label class="form-label">Employee Code <span style="color:#f43f5e;">*</span></label>
+                <input type="text" [(ngModel)]="clockEmployeeCode" placeholder="e.g. EMP-001" class="clock-input" />
+                <span class="form-hint">Your assigned workforce identifier (e.g., EMP-001, EMP-002, EMP-003)</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Password <span style="color:#f43f5e;">*</span></label>
+                <div class="password-input-wrap">
+                  <input [type]="clockShowPassword ? 'text' : 'password'" [(ngModel)]="clockPassword" placeholder="Enter password" class="clock-input" />
+                  <button type="button" (click)="clockShowPassword = !clockShowPassword" class="btn-eye-toggle">
+                    {{ clockShowPassword ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+              </div>
+
+              <div *ngIf="clockError" class="clock-error-alert">
+                <span>⚠️ {{ clockError }}</span>
+              </div>
+
+              <!-- Split Shift Notice if shift was closed earlier -->
+              <div *ngIf="(activityStatus$ | async)?.state === 'Closed'" class="act-punctuality-banner banner-ontime" style="margin-bottom: 1rem; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1);">
+                <span>ℹ️ <strong>Split Shift:</strong> Your earlier shift was paused ({{ activityService.formatShortDuration((activityStatus$ | async)?.totalWorkSeconds || 0) }} worked). Press <strong>REOPEN SHIFT</strong> below to continue counting your day.</span>
+              </div>
+
+              <!-- 3 BUTTONS -->
+              <div class="clock-buttons-triad" *ngIf="activityStatus$ | async as act">
+                <button (click)="executeClockModalAction('Start')" 
+                        [disabled]="clockSubmitting || act.state === 'Working'"
+                        class="btn-triad triad-start">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <div class="triad-text">
+                    <strong>{{ act.state === 'Closed' ? 'REOPEN / RESTART SHIFT' : 'START WORK' }}</strong>
+                    <small>{{ act.state === 'Closed' ? 'Continue split shift' : 'Clock in & count time' }}</small>
+                  </div>
+                </button>
+
+                <button (click)="executeClockToggleBreak()" 
+                        [disabled]="clockSubmitting || act.state === 'NotStarted' || act.state === 'Closed'"
+                        class="btn-triad triad-break"
+                        [class.triad-resume]="act.state === 'OnBreak'">
+                  <svg *ngIf="act.state !== 'OnBreak'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  <svg *ngIf="act.state === 'OnBreak'" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <div class="triad-text">
+                    <strong>{{ act.state === 'OnBreak' ? 'RESUME WORK' : 'TAKE BREAK' }}</strong>
+                    <small>{{ act.state === 'OnBreak' ? 'Stop break' : '1h daily max' }}</small>
+                  </div>
+                </button>
+
+                <button (click)="executeClockModalAction('End')" 
+                        [disabled]="clockSubmitting || act.state === 'NotStarted' || act.state === 'Closed'"
+                        class="btn-triad triad-end">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                  <div class="triad-text">
+                    <strong>END WORK</strong>
+                    <small>Close PC & finish day</small>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2080,6 +2290,444 @@ export interface AppNotification {
         border-top: 1px solid $border-glass;
       }
     }
+
+    // Activity Topbar Widget & Clock Modal
+    .activity-topbar-widget {
+      display: flex;
+      align-items: center;
+      margin-right: 0.5rem;
+
+      .btn-topbar-clock {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: $radius-sm;
+        font-size: 0.775rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+
+        &.clock-notstarted {
+          background: rgba(245, 158, 11, 0.15);
+          border: 1px solid rgba(245, 158, 11, 0.35);
+          color: #fcd34d;
+
+          &:hover {
+            background: rgba(245, 158, 11, 0.25);
+            border-color: rgba(245, 158, 11, 0.5);
+          }
+        }
+
+        &.clock-closed {
+          background: rgba(148, 163, 184, 0.12);
+          border: 1px solid rgba(148, 163, 184, 0.25);
+          color: #cbd5e1;
+
+          &:hover {
+            background: rgba(148, 163, 184, 0.2);
+          }
+        }
+
+        .clock-pulse-amber {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #f59e0b;
+          box-shadow: 0 0 6px #f59e0b;
+        }
+      }
+
+      .topbar-timer-group {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid $border-glass;
+        border-radius: $radius-sm;
+        padding: 0.2rem 0.35rem;
+
+        .topbar-timer-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 0.8rem;
+          font-weight: 700;
+
+          &.badge-working-live {
+            color: #34d399;
+          }
+
+          &.badge-break-live {
+            color: #fbbf24;
+          }
+
+          &.badge-idle-live {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.12);
+          }
+
+          &.badge-break-overdue {
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.15);
+          }
+
+          .live-dot-working {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+          }
+
+          .live-dot-idle {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #f59e0b;
+            box-shadow: 0 0 6px #f59e0b;
+          }
+
+          .live-dot-break {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #f59e0b;
+            box-shadow: 0 0 6px #f59e0b;
+          }
+
+          .overdue-tag {
+            font-size: 0.65rem;
+            background: #ef4444;
+            color: #fff;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+          }
+        }
+
+        .btn-topbar-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          border: none;
+          font-size: 0.72rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &.btn-action-break-sm {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            &:hover { background: rgba(245, 158, 11, 0.35); }
+          }
+
+          &.btn-action-resume-sm {
+            background: rgba(2, 132, 199, 0.2);
+            color: #7dd3fc;
+            &:hover { background: rgba(2, 132, 199, 0.35); }
+          }
+
+          &.btn-action-end-sm {
+            background: rgba(239, 68, 68, 0.18);
+            color: #fca5a5;
+            &:hover { background: rgba(239, 68, 68, 0.32); }
+          }
+        }
+      }
+    }
+
+    .inactivity-idle-banner {
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.12));
+      border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 0.65rem 1.5rem;
+      animation: slideDown 0.3s ease;
+
+      .banner-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        max-width: 1400px;
+        margin: 0 auto;
+
+        .banner-icon {
+          font-size: 1.25rem;
+        }
+
+        .banner-text {
+          flex: 1;
+          font-size: 0.85rem;
+          color: #fef3c7;
+
+          strong {
+            color: #fbbf24;
+          }
+
+          .banner-action-hint {
+            display: inline-block;
+            margin-left: 0.5rem;
+            color: #cbd5e1;
+          }
+        }
+
+        .btn-banner-resume {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.35rem 0.9rem;
+          border-radius: 6px;
+          border: 1px solid rgba(245, 158, 11, 0.6);
+          background: rgba(245, 158, 11, 0.3);
+          color: #ffffff;
+          font-size: 0.8rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            background: rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+          }
+        }
+      }
+    }
+
+    .inactivity-floating-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(245, 158, 11, 0.6);
+      color: #fef3c7;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      z-index: 99999;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    // Modal Box
+    .activity-modal-box {
+      width: 100%;
+      max-width: 540px;
+      padding: 1.5rem;
+      border-radius: $radius-lg;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+
+      .act-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+
+        .act-modal-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+
+          .act-clock-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            color: #34d399;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .act-modal-title {
+            margin: 0;
+            font-size: 1.15rem;
+            color: #f8fafc;
+            font-weight: 700;
+          }
+
+          .act-modal-subtitle {
+            margin: 0.15rem 0 0;
+            font-size: 0.75rem;
+            color: #94a3b8;
+          }
+        }
+      }
+
+      .act-clock-card {
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: $radius-md;
+        padding: 0.85rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+
+        .act-clock-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+
+          .act-digital-clock {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #38bdf8;
+          }
+
+          .act-clock-tz {
+            font-size: 0.72rem;
+            color: #94a3b8;
+          }
+        }
+
+        .act-punctuality-banner {
+          font-size: 0.75rem;
+          padding: 0.4rem 0.65rem;
+          border-radius: 6px;
+
+          &.banner-ontime {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+          }
+
+          &.banner-late {
+            background: rgba(244, 63, 94, 0.12);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #fda4af;
+          }
+        }
+      }
+
+      .act-form-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+
+          .form-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #cbd5e1;
+          }
+
+          .form-hint {
+            font-size: 0.7rem;
+            color: #64748b;
+          }
+
+          .clock-input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 0.55rem 0.75rem;
+            color: #f8fafc;
+            font-size: 0.85rem;
+            outline: none;
+
+            &:focus {
+              border-color: #38bdf8;
+            }
+          }
+
+          .password-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+
+            .btn-eye-toggle {
+              position: absolute;
+              right: 0.5rem;
+              background: transparent;
+              border: none;
+              color: #94a3b8;
+              font-size: 0.72rem;
+              cursor: pointer;
+            }
+          }
+        }
+
+        .clock-error-alert {
+          padding: 0.55rem 0.75rem;
+          border-radius: 6px;
+          background: rgba(239, 68, 68, 0.15);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          color: #fca5a5;
+          font-size: 0.78rem;
+        }
+
+        .clock-buttons-triad {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.65rem;
+          margin-top: 0.35rem;
+
+          .btn-triad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.85rem 0.5rem;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+
+            &:disabled {
+              opacity: 0.35;
+              cursor: not-allowed;
+              transform: none !important;
+            }
+
+            .triad-text {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              strong { font-size: 0.825rem; letter-spacing: 0.04em; }
+              small { font-size: 0.65rem; opacity: 0.85; }
+            }
+
+            &.triad-start {
+              background: linear-gradient(135deg, #10b981, #059669);
+              color: #fff;
+              &:hover:not(:disabled) { background: linear-gradient(135deg, #34d399, #10b981); transform: translateY(-1px); }
+            }
+
+            &.triad-break {
+              background: linear-gradient(135deg, #d97706, #92400e);
+              color: #fff;
+              &:hover:not(:disabled) { background: linear-gradient(135deg, #f59e0b, #b45309); transform: translateY(-1px); }
+            }
+
+            &.triad-resume {
+              background: linear-gradient(135deg, #0284c7, #075985);
+              &:hover:not(:disabled) { background: linear-gradient(135deg, #38bdf8, #0284c7); transform: translateY(-1px); }
+            }
+
+            &.triad-end {
+              background: linear-gradient(135deg, #e11d48, #9f1239);
+              color: #fff;
+              &:hover:not(:disabled) { background: linear-gradient(135deg, #f43f5e, #be123c); transform: translateY(-1px); }
+            }
+          }
+        }
+      }
+    }
   `]
 })
 export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
@@ -2088,6 +2736,7 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
   public networkService = inject(NetworkService);
   public idleTimerService = inject(IdleTimerService);
   public audioService = inject(AudioService);
+  public activityService = inject(ActivityService);
   public router = inject(Router);
 
   @ViewChild('paletteInput') paletteInputElement?: ElementRef<HTMLInputElement>;
@@ -2097,6 +2746,16 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
   public activeTenant$ = this.authService.activeTenant$;
   public availableTenants$ = this.authService.availableTenants$;
   public toasts$ = this.toastService.toasts$;
+  public activityStatus$ = this.activityService.status$;
+
+  // Global Time Clock Modal State
+  public globalClockModalOpen = false;
+  public clockEmployeeCode = '';
+  public clockPassword = '';
+  public clockShowPassword = false;
+  public clockSubmitting = false;
+  public clockError: string | null = null;
+  public globalClockDisplay = '';
 
   // Network & Idle Guard State
   public isOnline$ = this.networkService.isOnline$;
@@ -2211,6 +2870,128 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
         this.wasOffline = !online;
       })
     );
+
+    this.updateGlobalClock();
+    this.subscriptions.add(
+      interval(1000).subscribe(() => this.updateGlobalClock())
+    );
+
+    this.activityService.loadMyStatus().subscribe(res => {
+      if (res.data?.state === 'NotStarted' || res.data?.state === 'Closed') {
+        const hasPrompted = sessionStorage.getItem('orbit_prompted_start');
+        if (!hasPrompted) {
+          sessionStorage.setItem('orbit_prompted_start', 'true');
+          this.openGlobalClockModal('Start');
+        }
+      }
+    });
+
+    this.subscriptions.add(
+      this.activityStatus$.subscribe(st => {
+        if (st?.employeeNumber && !this.clockEmployeeCode) {
+          this.clockEmployeeCode = st.employeeNumber;
+        }
+      })
+    );
+  }
+
+  public openGlobalClockModal(action?: string): void {
+    this.clockError = null;
+    const current = this.activityService.currentStatus;
+    if (current?.employeeNumber && !this.clockEmployeeCode) {
+      this.clockEmployeeCode = current.employeeNumber;
+    }
+    this.globalClockModalOpen = true;
+  }
+
+  public closeGlobalClockModal(): void {
+    this.globalClockModalOpen = false;
+    this.clockError = null;
+  }
+
+  public isClockLate(): boolean {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    return (h > 8) || (h === 8 && m > 10);
+  }
+
+  public getClockLateMinutes(): number {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    return Math.max(1, (h * 60 + m) - (8 * 60 + 10));
+  }
+
+  public executeClockModalAction(action: 'Start' | 'Break' | 'Resume' | 'End'): void {
+    const current = this.activityService.currentStatus;
+    const code = this.clockEmployeeCode.trim() || current?.employeeNumber || '';
+    if (!code) {
+      this.clockError = 'Please enter your Employee Code (e.g. EMP-001).';
+      return;
+    }
+
+    this.clockSubmitting = true;
+    this.clockError = null;
+    const now = new Date();
+
+    this.activityService.executeAction({
+      employeeCode: code,
+      password: this.clockPassword.trim() || undefined,
+      action: action,
+      clientLocalHour: now.getHours(),
+      clientLocalMinute: now.getMinutes()
+    }).subscribe({
+      next: res => {
+        this.clockSubmitting = false;
+        this.clockPassword = '';
+        this.globalClockModalOpen = false;
+        this.toastService.success('Activity Recorded', res.message || `${action} recorded successfully.`);
+      },
+      error: err => {
+        this.clockSubmitting = false;
+        this.clockError = err?.error?.message || err?.message || 'Authentication failed. Please verify employee code and password.';
+      }
+    });
+  }
+
+  public executeQuickClockAction(action: 'Start' | 'Break' | 'Resume' | 'End'): void {
+    const current = this.activityService.currentStatus;
+    const code = current?.employeeNumber || this.clockEmployeeCode.trim();
+    if (!code) {
+      this.openGlobalClockModal(action);
+      return;
+    }
+
+    this.clockSubmitting = true;
+    const now = new Date();
+    this.activityService.executeAction({
+      employeeCode: code,
+      password: this.clockPassword.trim() || undefined,
+      action: action,
+      clientLocalHour: now.getHours(),
+      clientLocalMinute: now.getMinutes()
+    }).subscribe({
+      next: res => {
+        this.clockSubmitting = false;
+        this.toastService.success('Activity Recorded', res.message || `${action} recorded successfully.`);
+      },
+      error: err => {
+        this.clockSubmitting = false;
+        this.clockError = err?.error?.message || err?.message || 'Authentication failed.';
+        this.openGlobalClockModal(action);
+      }
+    });
+  }
+
+  public executeClockToggleBreak(): void {
+    const current = this.activityService.currentStatus?.state;
+    this.executeClockModalAction(current === 'OnBreak' ? 'Resume' : 'Break');
+  }
+
+  private updateGlobalClock(): void {
+    const now = new Date();
+    this.globalClockDisplay = now.toLocaleTimeString('en-US', { hour12: true });
   }
 
   public ngOnDestroy(): void {
@@ -2404,6 +3185,8 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
       { id: 'nav-inv', category: 'Navigation', title: 'Inventory & Procurement', subtitle: 'Warehousing, stock levels, and audit logs', icon: '📦', badgeClass: 'badge-amber', action: () => this.router.navigate(['/app/inventory']) },
       { id: 'nav-mfg', category: 'Navigation', title: 'Manufacturing', subtitle: 'Work orders, Bill of Materials, and work centers', icon: '⚙️', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/manufacturing']) },
       { id: 'nav-hr', category: 'Navigation', title: 'HR & Attendance', subtitle: 'Shifts, clock in/out, and leave management', icon: '⏱️', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/hr']) },
+      { id: 'nav-act', category: 'Navigation', title: 'Activity & Time Tracking', subtitle: 'Live workforce radar, break allowance governance, and daily shift clock', icon: '⏱️', badgeClass: 'badge-emerald', action: () => this.router.navigate(['/app/activity']) },
+      { id: 'act-clock', category: 'Action', title: 'Time Clock Controls (Start/Break/End)', subtitle: 'Open employee time clock to record shift actions', icon: '⏱️', badgeClass: 'badge-amber', action: () => this.openGlobalClockModal() },
       { id: 'nav-fin', category: 'Navigation', title: 'Invoicing & Finance', subtitle: 'General ledger invoices, payments, and accounting', icon: '💵', badgeClass: 'badge-violet', action: () => this.router.navigate(['/app/finance']) },
       { id: 'nav-rep', category: 'Navigation', title: 'Reports & Dashboards', subtitle: 'Executive cross-module reporting and CSV exports', icon: '📈', badgeClass: 'badge-indigo', action: () => this.router.navigate(['/app/reports']) },
       { id: 'nav-aud', category: 'Navigation', title: 'Audit Trail', subtitle: 'Immutable compliance logging and record changes', icon: '🛡️', badgeClass: 'badge-cyan', action: () => this.router.navigate(['/app/audit']) },
@@ -2438,6 +3221,31 @@ export class WorkspaceLayoutComponent implements OnInit, OnDestroy {
 
   public closeMobile(): void {
     this.mobileSidebarOpen = false;
+  }
+
+  public canAccess(moduleKey: string): boolean {
+    return this.authService.canAccessModule(moduleKey);
+  }
+
+  public isCurrentPersona(key: 'admin' | 'muhammad' | 'amr' | 'abdelrazik'): boolean {
+    const user = this.authService.currentUser;
+    if (!user) return false;
+    if (key === 'muhammad') return user.email === 'alkhadraam@gmail.com';
+    if (key === 'amr') return user.email === 'amr@kazareen.com' || user.departmentCode === 'HR';
+    if (key === 'abdelrazik') return user.email === 'abdelrazik@kazareen.com' || user.departmentCode === 'FIN';
+    return (user.role === 'Owner' || user.email === 'admin@kazareen.com') && user.departmentCode !== 'IT';
+  }
+
+  public switchPersona(key: 'admin' | 'muhammad' | 'amr' | 'abdelrazik'): void {
+    this.authService.loginAsPersona(key);
+    let target = '/app/dashboard';
+    if (key === 'amr') target = '/app/hr';
+    else if (key === 'abdelrazik') target = '/app/finance';
+    else if (key === 'muhammad') target = '/app/support';
+
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate([target]);
+    });
   }
 
   public switchRole(role: TenantRole): void {

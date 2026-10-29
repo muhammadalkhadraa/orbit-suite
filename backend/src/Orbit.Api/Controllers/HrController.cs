@@ -73,6 +73,26 @@ public class HrController : ControllerBase
         return Ok(ApiResponse<string>.Ok(string.Empty, "Leave request cancelled successfully."));
     }
 
+    [HttpGet("vacation-balance")]
+    public async Task<ActionResult<ApiResponse<EmployeeVacationBalanceDto>>> GetVacationBalance(
+        [FromQuery] Guid? employeeId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _hrService.GetVacationBalanceAsync(employeeId, cancellationToken);
+        return Ok(ApiResponse<EmployeeVacationBalanceDto>.Ok(result));
+    }
+
+    [HttpGet("employee-profile/{employeeId}")]
+    public async Task<ActionResult<ApiResponse<EmployeeSalaryProfileDto>>> GetEmployeeSalaryProfile(
+        Guid employeeId,
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken cancellationToken)
+    {
+        var result = await _hrService.GetEmployeeSalaryProfileAsync(employeeId, year, month, cancellationToken);
+        return Ok(ApiResponse<EmployeeSalaryProfileDto>.Ok(result));
+    }
+
     #endregion
 
     #region Attendance

@@ -51,6 +51,8 @@ export const routes: Routes = [
       {
         path: 'crm',
         title: 'CRM & Sales Pipeline | Orbit Suite',
+        canActivate: [roleGuard],
+        data: { module: 'crm' },
         loadComponent: () => import('./features/crm/crm.component').then(m => m.CrmComponent)
       },
       {
@@ -61,21 +63,34 @@ export const routes: Routes = [
       {
         path: 'inventory',
         title: 'Inventory & Procurement | Orbit Suite',
+        canActivate: [roleGuard],
+        data: { module: 'inventory' },
         loadComponent: () => import('./features/inventory/inventory.component').then(m => m.InventoryComponent)
       },
       {
         path: 'manufacturing',
         title: 'Manufacturing & BOM | Orbit Suite',
+        canActivate: [roleGuard],
+        data: { module: 'manufacturing' },
         loadComponent: () => import('./features/manufacturing/manufacturing.component').then(m => m.ManufacturingComponent)
       },
       {
         path: 'hr',
         title: 'HR & Digital Attendance | Orbit Suite',
+        canActivate: [roleGuard],
+        data: { module: 'hr' },
         loadComponent: () => import('./features/hr/hr.component').then(m => m.HrComponent)
+      },
+      {
+        path: 'activity',
+        title: 'Activity & Time Tracking | Orbit Suite',
+        loadComponent: () => import('./features/activity/activity.component').then(m => m.ActivityComponent)
       },
       {
         path: 'finance',
         title: 'Invoicing & Accounting | Orbit Suite',
+        canActivate: [roleGuard],
+        data: { module: 'finance' },
         loadComponent: () => import('./features/finance/finance.component').then(m => m.FinanceComponent)
       },
       {
@@ -87,8 +102,15 @@ export const routes: Routes = [
         path: 'audit',
         title: 'Audit Trail & Compliance | Orbit Suite',
         canActivate: [roleGuard],
-        data: { roles: ['Owner', 'Admin', 'Manager'] },
+        data: { roles: ['Owner', 'Admin', 'Manager'], module: 'audit' },
         loadComponent: () => import('./features/audit/audit.component').then(m => m.AuditComponent)
+      },
+      {
+        path: 'compliance',
+        title: 'Compliance & Audit Governance | Orbit Suite',
+        canActivate: [roleGuard],
+        data: { module: 'compliance' },
+        loadComponent: () => import('./features/compliance/compliance.component').then(m => m.ComplianceComponent)
       },
       {
         path: 'settings',

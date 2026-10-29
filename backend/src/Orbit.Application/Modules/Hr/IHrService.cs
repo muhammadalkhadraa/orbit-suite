@@ -15,6 +15,7 @@ public interface IHrService
     Task<LeaveRequestDto> SubmitLeaveRequestAsync(CreateLeaveRequestRequest request, CancellationToken cancellationToken = default);
     Task<LeaveRequestDto> ActionLeaveRequestAsync(Guid id, ActionLeaveRequestRequest request, CancellationToken cancellationToken = default);
     Task CancelLeaveRequestAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<EmployeeVacationBalanceDto> GetVacationBalanceAsync(Guid? employeeId = null, CancellationToken cancellationToken = default);
 
     // Attendance
     Task<PagedResponse<AttendanceLogDto>> GetAttendanceLogsAsync(AttendanceFilterRequest filter, CancellationToken cancellationToken = default);
@@ -29,6 +30,7 @@ public interface IHrService
     Task<ShiftScheduleDto> UpdateShiftScheduleAsync(Guid id, UpdateShiftScheduleRequest request, CancellationToken cancellationToken = default);
     Task DeleteShiftScheduleAsync(Guid id, CancellationToken cancellationToken = default);
 
-    // Metrics
+    // Metrics & Employee Salary Profile
     Task<HrMetricsDto> GetHrMetricsAsync(CancellationToken cancellationToken = default);
+    Task<EmployeeSalaryProfileDto> GetEmployeeSalaryProfileAsync(Guid employeeId, int? year = null, int? month = null, CancellationToken cancellationToken = default);
 }

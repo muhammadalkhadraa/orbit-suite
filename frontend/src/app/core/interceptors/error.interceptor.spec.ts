@@ -21,7 +21,8 @@ describe('errorInterceptor', () => {
         {
           provide: AuthService,
           useValue: {
-            logout: jasmine.createSpy('logout')
+            logout: jasmine.createSpy('logout'),
+            getToken: jasmine.createSpy('getToken').and.returnValue('jwt_mock_token')
           }
         },
         {

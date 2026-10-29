@@ -12,12 +12,17 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      const token = authService.getToken ? authService.getToken() : null;
+      const isDemoToken = !!token && token.startsWith('demo_');
+
       if (error.status === 401) {
-        // Token expired or invalid session
-        authService.logout();
-        toastService.warning('Session Expired', 'Your authentication session has expired. Please sign in again.');
-        router.navigate(['/login']);
-      } else if (error.status === 403) {
+        // Token expired or invalid session (do not intercept credentials failure on login/register or demo sessions)
+        if (!req.url.includes('/auth/login') && !req.url.includes('/auth/register') && !isDemoToken) {
+          authService.logout();
+          toastService.warning('Session Expired', 'Your authentication session has expired. Please sign in again.');
+          router.navigate(['/login']);
+        }
+      } else if (error.status === 403 && !isDemoToken) {
         // Forbidden action based on role
         const msg = error.error?.message || 'Your role does not possess permissions for this operation.';
         toastService.error('Access Denied', msg);

@@ -13,6 +13,8 @@ using Orbit.Application.Modules.Finance;
 using Orbit.Application.Modules.Manufacturing;
 using Orbit.Application.Modules.Hr;
 using Orbit.Application.Modules.Reports;
+using Orbit.Application.Modules.Compliance;
+using Orbit.Application.Modules.Payroll;
 using Orbit.Infrastructure.Identity;
 using Orbit.Infrastructure.Persistence;
 using Orbit.Infrastructure.Services;
@@ -81,6 +83,9 @@ public static class DependencyInjection
         services.AddScoped<IManufacturingService, ManufacturingService>();
         services.AddScoped<IHrService, HrService>();
         services.AddScoped<IReportingService, ReportingService>();
+        services.AddScoped<IActivityService, ActivityService>();
+        services.AddScoped<IComplianceService, ComplianceService>();
+        services.AddScoped<IPayrollService, PayrollService>();
 
         return services;
     }

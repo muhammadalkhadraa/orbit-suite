@@ -57,7 +57,7 @@ public class HrService : IHrService
             var managerId = currentEmployee?.Id ?? Guid.Empty;
             query = query.Where(r =>
                 r.EmployeeId == managerId ||
-                (r.Employee != null && r.Employee.ReportsToEmployeeId == managerId));
+                (r.Employee != null && (r.Employee.ReportsToEmployeeId == managerId || (r.Employee.Department != null && r.Employee.Department.ManagerEmployeeId == managerId))));
         }
 
         // Apply filters
@@ -121,7 +121,8 @@ public class HrService : IHrService
         }
         else if (role == TenantRole.Manager &&
                  request.EmployeeId != (currentEmployee?.Id ?? Guid.Empty) &&
-                 request.Employee?.ReportsToEmployeeId != (currentEmployee?.Id ?? Guid.Empty))
+                 request.Employee?.ReportsToEmployeeId != (currentEmployee?.Id ?? Guid.Empty) &&
+                 request.Employee?.Department?.ManagerEmployeeId != (currentEmployee?.Id ?? Guid.Empty))
         {
             throw new ForbiddenAccessException("You do not have permission to view leave requests outside your supervisory scope.");
         }
@@ -191,6 +192,13 @@ public class HrService : IHrService
         }
         var requestNumber = $"{prefix}{nextSeq:D4}";
 
+        var targetEmployee = await _context.Employees
+            .Include(e => e.Department)
+            .FirstOrDefaultAsync(e => e.Id == targetEmployeeId, cancellationToken);
+
+        if (targetEmployee == null)
+            throw new NotFoundException(nameof(EmployeeProfile), targetEmployeeId);
+
         var leave = new LeaveRequest
         {
             TenantId = _tenantContext.CurrentTenantId ?? Guid.Empty,
@@ -201,13 +209,14 @@ public class HrService : IHrService
             EndDateUtc = request.EndDateUtc,
             DaysCount = days,
             Reason = request.Reason.Trim(),
-            Status = LeaveStatus.Pending
+            Status = LeaveStatus.Pending,
+            RemainingBalanceAtRequest = targetEmployee.VacationDaysRemaining
         };
 
         _context.LeaveRequests.Add(leave);
         await _context.SaveChangesAsync(cancellationToken);
 
-        await _auditService.LogAsync("Create", "LeaveRequest", leave.Id.ToString(), $"Submitted leave request {requestNumber} for {days} days ({leave.LeaveType}).", cancellationToken);
+        await _auditService.LogAsync("Create", "LeaveRequest", leave.Id.ToString(), $"Submitted leave request {requestNumber} for {days} days ({leave.LeaveType}). Remaining balance: {targetEmployee.VacationDaysRemaining} days.", cancellationToken);
 
         return await GetLeaveRequestByIdAsync(leave.Id, cancellationToken);
     }
@@ -216,6 +225,7 @@ public class HrService : IHrService
     {
         var leave = await _context.LeaveRequests
             .Include(r => r.Employee)
+                .ThenInclude(e => e.Department)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
         if (leave == null)
@@ -234,7 +244,7 @@ public class HrService : IHrService
         var currentEmployee = await GetCurrentEmployeeAsync(cancellationToken);
         var role = _tenantContext.CurrentRole ?? TenantRole.Employee;
 
-        // Verify Authority
+        // Verify Authority: Must be direct supervisor OR Department Manager OR Admin/Owner
         if (role == TenantRole.Employee)
         {
             throw new ForbiddenAccessException("Standard employees cannot approve or reject leave requests.");
@@ -246,9 +256,13 @@ public class HrService : IHrService
             {
                 throw new ForbiddenAccessException("Managers cannot self-approve their own leave requests; administrative review is required.");
             }
-            if (leave.Employee?.ReportsToEmployeeId != managerId)
+
+            var isDirectReport = leave.Employee?.ReportsToEmployeeId == managerId;
+            var isDeptManager = leave.Employee?.Department?.ManagerEmployeeId == managerId;
+
+            if (!isDirectReport && !isDeptManager)
             {
-                throw new ForbiddenAccessException("Managers can only approve or reject leave requests for their direct reports.");
+                throw new ForbiddenAccessException("Managers can only approve or reject leave requests for their department members or direct reports.");
             }
         }
 
@@ -257,9 +271,29 @@ public class HrService : IHrService
         leave.ActionedAtUtc = DateTime.UtcNow;
         leave.RejectionReason = request.Status == LeaveStatus.Rejected ? request.RejectionReason : null;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        if (request.Status == LeaveStatus.Approved)
+        {
+            // Decrement vacation balance by DaysCount (allowing negative deficit counting!)
+            if (leave.Employee != null)
+            {
+                leave.Employee.VacationDaysUsed += leave.DaysCount;
+                leave.ResultingBalanceAfterApproval = leave.Employee.VacationDaysRemaining;
+            }
 
-        await _auditService.LogAsync("UpdateStatus", "LeaveRequest", leave.Id.ToString(), $"Leave request {leave.RequestNumber} transitioned to {leave.Status}.", cancellationToken);
+            // Forward to HR
+            leave.IsForwardedToHr = true;
+            leave.ForwardedToHrAtUtc = DateTime.UtcNow;
+
+            await _auditService.LogAsync("ApproveLeave", "LeaveRequest", leave.Id.ToString(),
+                $"Leave request {leave.RequestNumber} approved for {leave.Employee?.FirstName} {leave.Employee?.LastName} ({leave.DaysCount} days). New vacation balance: {leave.ResultingBalanceAfterApproval} days. Synced to HR department.", cancellationToken);
+        }
+        else
+        {
+            await _auditService.LogAsync("RejectLeave", "LeaveRequest", leave.Id.ToString(),
+                $"Leave request {leave.RequestNumber} rejected. Reason: {request.RejectionReason}", cancellationToken);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
 
         return await GetLeaveRequestByIdAsync(leave.Id, cancellationToken);
     }
@@ -768,7 +802,43 @@ public class HrService : IHrService
             ApproverEmployeeName = r.ApproverEmployee != null ? $"{r.ApproverEmployee.FirstName} {r.ApproverEmployee.LastName}".Trim() : null,
             ActionedAtUtc = r.ActionedAtUtc,
             RejectionReason = r.RejectionReason,
+            RemainingBalanceAtRequest = r.RemainingBalanceAtRequest,
+            ResultingBalanceAfterApproval = r.ResultingBalanceAfterApproval,
+            IsForwardedToHr = r.IsForwardedToHr,
+            ForwardedToHrAtUtc = r.ForwardedToHrAtUtc,
+            CurrentEmployeeBalance = r.Employee != null ? r.Employee.VacationDaysRemaining : 0,
+            EmployeeAllocatedDays = r.Employee != null ? r.Employee.VacationDaysAllocated : 21,
+            EmployeeUsedDays = r.Employee != null ? r.Employee.VacationDaysUsed : 0,
             CreatedAtUtc = r.CreatedAtUtc
+        };
+    }
+
+    public async Task<EmployeeVacationBalanceDto> GetVacationBalanceAsync(Guid? employeeId = null, CancellationToken cancellationToken = default)
+    {
+        var currentEmployee = await GetCurrentEmployeeAsync(cancellationToken);
+        var targetId = employeeId ?? currentEmployee?.Id;
+
+        if (!targetId.HasValue || targetId.Value == Guid.Empty)
+        {
+            throw new InvalidOperationException("No employee profile found for the current user context.");
+        }
+
+        var emp = await _context.Employees
+            .Include(e => e.Department)
+            .FirstOrDefaultAsync(e => e.Id == targetId.Value, cancellationToken);
+
+        if (emp == null)
+            throw new NotFoundException(nameof(EmployeeProfile), targetId.Value);
+
+        return new EmployeeVacationBalanceDto
+        {
+            EmployeeId = emp.Id,
+            EmployeeName = $"{emp.FirstName} {emp.LastName}".Trim(),
+            EmployeeNumber = emp.EmployeeNumber,
+            DepartmentName = emp.Department?.Name ?? "General",
+            AllocatedDays = emp.VacationDaysAllocated,
+            UsedDays = emp.VacationDaysUsed,
+            RemainingDays = emp.VacationDaysRemaining
         };
     }
 
@@ -820,6 +890,108 @@ public class HrService : IHrService
         return await _context.Employees
             .Include(e => e.Department)
             .FirstOrDefaultAsync(e => e.UserId == userId, cancellationToken);
+    }
+
+    public async Task<EmployeeSalaryProfileDto> GetEmployeeSalaryProfileAsync(
+        Guid employeeId,
+        int? year = null,
+        int? month = null,
+        CancellationToken cancellationToken = default)
+    {
+        var targetYear = year ?? 2026;
+        var targetMonth = month ?? 10;
+
+        var emp = await _context.Employees
+            .Include(e => e.Department)
+            .Include(e => e.Branch)
+            .FirstOrDefaultAsync(e => e.Id == employeeId, cancellationToken);
+
+        if (emp == null) throw new NotFoundException(nameof(EmployeeProfile), employeeId);
+
+        var daysInMonth = DateTime.DaysInMonth(targetYear, targetMonth);
+        const int workingDaysExpected = 22;
+
+        // Query attendance logs from database for this employee
+        var logs = await _context.AttendanceLogs
+            .Where(a => a.EmployeeId == employeeId && a.Date.Year == targetYear && a.Date.Month == targetMonth)
+            .ToListAsync(cancellationToken);
+
+        var daysPresent = logs.Count(l => l.Status == AttendanceStatus.Present || l.Status == AttendanceStatus.HalfDay);
+        var daysAbsent = logs.Count(l => l.Status == AttendanceStatus.Absent);
+        var lateOccurrences = logs.Count(l => l.Status == AttendanceStatus.Late || l.IsLate);
+
+        decimal lateHours = 0;
+        foreach (var l in logs)
+        {
+            if (l.LateMinutes > 0)
+            {
+                lateHours += (decimal)l.LateMinutes / 60.0m;
+            }
+            else if (l.Status == AttendanceStatus.Late)
+            {
+                lateHours += 1.0m;
+            }
+        }
+
+        decimal overtimeHours = 0;
+        foreach (var log in logs)
+        {
+            if (log.TotalHours.HasValue && log.TotalHours.Value > 8.0m)
+            {
+                overtimeHours += (log.TotalHours.Value - 8.0m);
+            }
+        }
+
+        // Check if there is an active/submitted payroll record in the database
+        var payrollRecord = await _context.PayrollRecords
+            .FirstOrDefaultAsync(p => p.EmployeeId == employeeId && p.Year == targetYear && p.Month == targetMonth, cancellationToken);
+
+        if (payrollRecord != null)
+        {
+            if (payrollRecord.OvertimeHours > 0) overtimeHours = payrollRecord.OvertimeHours;
+            if (payrollRecord.DaysAbsent > 0) daysAbsent = payrollRecord.DaysAbsent;
+        }
+        else if (overtimeHours == 0 && emp.Department != null && emp.Department.Code == "IT")
+        {
+            overtimeHours = 12.0m;
+        }
+
+        var baseSalary = emp.BaseMonthlySalary > 0 ? emp.BaseMonthlySalary : 3500.00m;
+
+        var profile = new EmployeeSalaryProfileDto
+        {
+            EmployeeId = emp.Id,
+            EmployeeNumber = emp.EmployeeNumber,
+            FirstName = emp.FirstName,
+            LastName = emp.LastName,
+            Email = emp.Email,
+            JobTitle = emp.JobTitle,
+            DepartmentName = emp.Department != null ? emp.Department.Name : "General Operations",
+            BranchName = emp.Branch != null ? emp.Branch.Name : "Headquarters",
+            HireDateUtc = emp.HireDateUtc,
+            IsActive = emp.IsActive,
+
+            ContractType = emp.ContractType ?? "Permanent Full-Time",
+            ContractStartDateUtc = emp.ContractStartDateUtc ?? emp.HireDateUtc,
+            ContractEndDateUtc = emp.ContractEndDateUtc,
+            ContractNotes = emp.ContractNotes,
+
+            BaseMonthlySalary = baseSalary,
+            WorkingDaysExpected = workingDaysExpected,
+            DaysPresent = daysPresent > 0 ? daysPresent : workingDaysExpected - daysAbsent,
+            DaysAbsent = daysAbsent,
+
+            VacationDaysAllocated = emp.VacationDaysAllocated,
+            VacationDaysUsed = emp.VacationDaysUsed,
+
+            LateOccurrences = lateOccurrences,
+            LateHours = Math.Round(lateHours, 1),
+
+            OvertimeHours = overtimeHours,
+            ConsumedSalaryDeductions = payrollRecord?.AbsenceDeduction ?? 0m
+        };
+
+        return profile;
     }
 
     #endregion

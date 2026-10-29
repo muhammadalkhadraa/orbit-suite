@@ -14,8 +14,16 @@ public class SupportTicket : BaseEntity, ITenantScopedEntity, IAuditableEntity
     public string Subject { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
-    public Guid CustomerId { get; set; }
-    public Customer Customer { get; set; } = null!;
+    public bool IsInternalItTicket { get; set; } = false;
+
+    public Guid? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
+
+    public Guid? RequestingEmployeeId { get; set; }
+    public EmployeeProfile? RequestingEmployee { get; set; }
+
+    public Guid? TargetDepartmentId { get; set; }
+    public Department? TargetDepartment { get; set; }
 
     public Guid? AssignedEmployeeId { get; set; }
     public EmployeeProfile? AssignedEmployee { get; set; }

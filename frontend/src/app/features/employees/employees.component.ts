@@ -105,6 +105,28 @@ import { Employee, Branch, Department } from '../../core/models/models';
               <span class="detail-val font-mono">{{ emp.employeeNumber }}</span>
             </div>
             <div class="emp-detail-row">
+              <span class="detail-label">Contract:</span>
+              <span class="detail-val text-amber font-bold" style="color: #f59e0b;">📜 {{ emp.contractType || 'Permanent Full-Time' }}</span>
+            </div>
+            <div class="emp-detail-row">
+              <span class="detail-label">Monthly Salary:</span>
+              <span class="detail-val font-mono text-emerald" style="color: #10b981; font-weight: 700;">\${{ (emp.baseSalary || 0) | number:'1.2-2' }}</span>
+            </div>
+            <div class="emp-detail-row" style="background: rgba(99, 102, 241, 0.08); padding: 0.35rem 0.5rem; border-radius: 6px; margin: 0.2rem 0;">
+              <div>
+                <span class="detail-label" style="font-size: 0.7rem; color: #a5b4fc;">Day Price (÷30): </span>
+                <span class="detail-val font-mono" style="font-size: 0.75rem; color: #818cf8; font-weight: 700;">
+                  \${{ ((emp.dailyRate || (emp.baseSalary || 0) / 30.0)) | number:'1.2-2' }}/d
+                </span>
+              </div>
+              <div>
+                <span class="detail-label" style="font-size: 0.7rem; color: #a5b4fc;">Hour Price (÷9): </span>
+                <span class="detail-val font-mono" style="font-size: 0.75rem; color: #c084fc; font-weight: 700;">
+                  \${{ ((emp.hourlyRate || (emp.baseSalary || 0) / 270.0)) | number:'1.2-2' }}/h
+                </span>
+              </div>
+            </div>
+            <div class="emp-detail-row">
               <span class="detail-label">Email:</span>
               <span class="detail-val">{{ emp.email }}</span>
             </div>
@@ -184,6 +206,83 @@ import { Employee, Branch, Department } from '../../core/models/models';
                 <option [value]="''">None (Reports to Owner)</option>
                 <option *ngFor="let emp of getEligibleManagers()" [value]="emp.id">{{ emp.fullName }} ({{ emp.jobTitle }})</option>
               </select>
+            </div>
+
+            <!-- Database-Stored Employment Contract & Strict Pricing Rules -->
+            <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: #a5b4fc; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem;">
+                  📜 Stored Employment Contract & Strict Pricing Rules
+                </span>
+                <span class="badge badge-indigo">Database Persisted</span>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="empContractType">Contract Type *</label>
+                  <select id="empContractType" [(ngModel)]="newContractType" name="contractType">
+                    <option value="Permanent Full-Time">Permanent Full-Time</option>
+                    <option value="Permanent Part-Time">Permanent Part-Time</option>
+                    <option value="Fixed-Term Contract">Fixed-Term Contract</option>
+                    <option value="Contractor / Consultant">Contractor / Consultant</option>
+                    <option value="Probationary">Probationary</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="empContractStart">Contract Start Date</label>
+                  <input id="empContractStart" type="date" [(ngModel)]="newContractStartDate" name="contractStartDate" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="empSalary" style="color: #34d399; font-weight: 700;">Base Monthly Salary ($) *</label>
+                  <input id="empSalary" type="number" [(ngModel)]="newBaseSalary" (ngModelChange)="onSalaryChange()" name="baseSalary" placeholder="e.g. 7500" required />
+                </div>
+                <div class="form-group">
+                  <label for="empOvertime">Overtime Rate ($/hr)</label>
+                  <input id="empOvertime" type="number" [(ngModel)]="newOvertimeRate" name="overtimeRate" placeholder="e.g. 41.67" />
+                </div>
+              </div>
+
+              <!-- Live Formula Pricing Badges: Day Price (Salary / 30) & Hour Price (Day Price / 9) -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 0.75rem; margin-top: 0.5rem;">
+                <div>
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase;">Day Price (Salary ÷ 30)</div>
+                  <div style="font-size: 1.1rem; font-weight: 700; color: #60a5fa; font-family: monospace;">
+                    \${{ calculatedDayPrice | number:'1.2-2' }}<span style="font-size: 0.75rem; font-weight: 400; color: #94a3b8;">/day</span>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase;">Hour Price (Day ÷ 9)</div>
+                  <div style="font-size: 1.1rem; font-weight: 700; color: #c084fc; font-family: monospace;">
+                    \${{ calculatedHourPrice | number:'1.2-2' }}<span style="font-size: 0.75rem; font-weight: 400; color: #94a3b8;">/hr</span>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase;">Overtime (Hour × 1.5)</div>
+                  <div style="font-size: 1.1rem; font-weight: 700; color: #fbbf24; font-family: monospace;">
+                    \${{ (calculatedHourPrice * 1.5) | number:'1.2-2' }}<span style="font-size: 0.75rem; font-weight: 400; color: #94a3b8;">/hr</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top: 0.75rem; margin-bottom: 0;">
+                <label for="empContractNotes">Contract Clauses & Official Notes</label>
+                <input id="empContractNotes" type="text" [(ngModel)]="newContractNotes" name="contractNotes" placeholder="e.g. Standard 40h/week agreement, 30 days daily divisor, 9h shift." />
+              </div>
+            </div>
+
+            <div class="form-row" *ngIf="!isEditing">
+              <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                <input id="empLoginAccount" type="checkbox" [(ngModel)]="newCreateLoginAccount" name="createLogin" />
+                <label for="empLoginAccount" style="margin: 0; cursor: pointer;">Enable System Login Account</label>
+              </div>
+              <div class="form-group" *ngIf="newCreateLoginAccount">
+                <label for="empInitialPass">Initial Password</label>
+                <input id="empInitialPass" type="password" [(ngModel)]="newInitialPassword" name="initialPassword" placeholder="OrbitMaster2026!" />
+              </div>
             </div>
 
             <div class="modal-footer">
@@ -524,6 +623,28 @@ export class EmployeesComponent implements OnInit {
   public newBranchId = '';
   public newDeptId = '';
   public newReportsToId = '';
+  public newBaseSalary = 0;
+  public newOvertimeRate = 0;
+  public newContractType = 'Permanent Full-Time';
+  public newContractStartDate = '';
+  public newContractEndDate = '';
+  public newContractNotes = '';
+  public newCreateLoginAccount = true;
+  public newInitialPassword = 'OrbitMaster2026!';
+
+  public get calculatedDayPrice(): number {
+    return this.newBaseSalary > 0 ? +(this.newBaseSalary / 30.0).toFixed(2) : 0;
+  }
+
+  public get calculatedHourPrice(): number {
+    return this.calculatedDayPrice > 0 ? +(this.calculatedDayPrice / 9.0).toFixed(2) : 0;
+  }
+
+  public onSalaryChange(): void {
+    if (this.newBaseSalary > 0 && !this.isEditing) {
+      this.newOvertimeRate = +(this.calculatedHourPrice * 1.5).toFixed(2);
+    }
+  }
 
   constructor(private apiService: ApiService, private authService: AuthService) {}
 
@@ -585,10 +706,18 @@ export class EmployeesComponent implements OnInit {
     this.newLastName = '';
     this.newEmail = '';
     this.newJobTitle = '';
-    this.newEmployeeNumber = `EMP-0${this.employees.length + 1}`;
+    this.newEmployeeNumber = `EMP-${Date.now().toString().slice(-4)}`;
     this.newBranchId = '';
     this.newDeptId = '';
     this.newReportsToId = '';
+    this.newBaseSalary = 5000;
+    this.newContractType = 'Permanent Full-Time';
+    this.newContractStartDate = new Date().toISOString().split('T')[0];
+    this.newContractEndDate = '';
+    this.newContractNotes = 'Standard full-time employment contract, 30 days divisor for day price, 9h daily shift for hour price.';
+    this.newOvertimeRate = +( (5000 / 30 / 9) * 1.5 ).toFixed(2);
+    this.newCreateLoginAccount = true;
+    this.newInitialPassword = 'OrbitMaster2026!';
     this.showModal = true;
   }
 
@@ -603,6 +732,12 @@ export class EmployeesComponent implements OnInit {
     this.newBranchId = emp.branchId || '';
     this.newDeptId = emp.departmentId || '';
     this.newReportsToId = emp.reportsToEmployeeId || '';
+    this.newBaseSalary = emp.baseSalary || 0;
+    this.newContractType = emp.contractType || 'Permanent Full-Time';
+    this.newContractStartDate = emp.contractStartDateUtc ? emp.contractStartDateUtc.split('T')[0] : '';
+    this.newContractEndDate = emp.contractEndDateUtc ? emp.contractEndDateUtc.split('T')[0] : '';
+    this.newContractNotes = emp.contractNotes || '';
+    this.newOvertimeRate = emp.overtimeRate || (this.newBaseSalary > 0 ? +(this.newBaseSalary / 30 / 9 * 1.5).toFixed(2) : 0);
     this.showModal = true;
   }
 
@@ -629,7 +764,17 @@ export class EmployeesComponent implements OnInit {
       employeeNumber: this.newEmployeeNumber,
       branchId: this.newBranchId || undefined,
       departmentId: this.newDeptId || undefined,
-      reportsToEmployeeId: this.newReportsToId || undefined
+      reportsToEmployeeId: this.newReportsToId || undefined,
+      contractType: this.newContractType,
+      contractStartDateUtc: this.newContractStartDate ? new Date(this.newContractStartDate).toISOString() : undefined,
+      contractEndDateUtc: this.newContractEndDate ? new Date(this.newContractEndDate).toISOString() : undefined,
+      contractNotes: this.newContractNotes,
+      baseSalary: this.newBaseSalary || 3500,
+      dailyRate: this.calculatedDayPrice,
+      hourlyRate: this.calculatedHourPrice,
+      overtimeRate: this.newOvertimeRate || +(this.calculatedHourPrice * 1.5).toFixed(2),
+      createLoginAccount: this.newCreateLoginAccount,
+      initialPassword: this.newInitialPassword || 'OrbitMaster2026!'
     }).subscribe(() => {
       this.closeModal();
       this.loadEmployees();
@@ -644,7 +789,15 @@ export class EmployeesComponent implements OnInit {
       jobTitle: this.newJobTitle,
       branchId: this.newBranchId || undefined,
       departmentId: this.newDeptId || undefined,
-      reportsToEmployeeId: this.newReportsToId || undefined
+      reportsToEmployeeId: this.newReportsToId || undefined,
+      contractType: this.newContractType,
+      contractStartDateUtc: this.newContractStartDate ? new Date(this.newContractStartDate).toISOString() : undefined,
+      contractEndDateUtc: this.newContractEndDate ? new Date(this.newContractEndDate).toISOString() : undefined,
+      contractNotes: this.newContractNotes,
+      baseSalary: this.newBaseSalary || undefined,
+      dailyRate: this.calculatedDayPrice,
+      hourlyRate: this.calculatedHourPrice,
+      overtimeRate: this.newOvertimeRate || undefined
     }).subscribe(() => {
       this.closeModal();
       this.loadEmployees();

@@ -31,6 +31,9 @@ public interface IApplicationDbContext
     DbSet<ShiftSchedule> ShiftSchedules { get; }
     DbSet<ReportExportHistory> ReportExports { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<ComplianceCertificate> ComplianceCertificates { get; }
+    DbSet<AuditMeeting> AuditMeetings { get; }
+    DbSet<PayrollRecord> PayrollRecords { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

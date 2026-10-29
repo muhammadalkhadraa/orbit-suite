@@ -108,15 +108,19 @@ public class IdentityService : IIdentityService
         };
         _context.Branches.Add(hqBranch);
 
-        var generalDept = new Department
-        {
-            Id = Guid.NewGuid(),
-            TenantId = tenant.Id,
-            Name = "General Management",
-            Code = "MGMT",
-            IsActive = true
-        };
-        _context.Departments.Add(generalDept);
+        // Provision the 8 Essential Standard Departments across all company types
+        var deptHr = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Human Resources", Code = "HR", Description = "Workforce, people operations, recruitment & payroll governance", IsActive = true };
+        var deptFin = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Finance & Accounting", Code = "FIN", Description = "General ledger, invoicing, accounts receivable & salary disbursement", IsActive = true };
+        var deptCs = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Customer Service", Code = "CS", Description = "Guest inquiries, client support & helpdesk ticket management", IsActive = true };
+        var deptIt = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Information Technology", Code = "IT", Description = "Internal IT infrastructure, hardware, systems & network troubleshooting", IsActive = true };
+        var deptSales = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Sales & Commercial", Code = "SALES", Description = "Revenue generation, client accounts & deal pipeline execution", IsActive = true };
+        var deptStores = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Stores & Warehouses", Code = "STORES", Description = "Physical inventory allocations, SKU tracking & inter-branch transfers", IsActive = true };
+        var deptData = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Data Entry & Operations", Code = "OPS", Description = "Operational logs, routine workflows, task execution & shift rosters", IsActive = true };
+        var deptAudit = new Department { Id = Guid.NewGuid(), TenantId = tenant.Id, Name = "Compliance & Audit", Code = "AUDIT", Description = "Regulatory certificates, ISO standards, safety audits & compliance reviews", IsActive = true };
+
+        _context.Departments.AddRange(deptHr, deptFin, deptCs, deptIt, deptSales, deptStores, deptData, deptAudit);
+
+        var generalDept = deptData;
 
         // Create initial employee profile for owner
         var nameParts = request.FullName.Split(' ', 2);
@@ -187,7 +191,10 @@ public class IdentityService : IIdentityService
             {
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
-                FullName = user.FullName
+                FullName = user.FullName,
+                Role = TenantRole.Owner.ToString(),
+                DepartmentCode = "OPS",
+                DepartmentName = "Data Entry & Operations"
             },
             ActiveTenant = new TenantSummaryDto
             {
@@ -231,7 +238,21 @@ public class IdentityService : IIdentityService
             Status = m.Status
         }).ToList();
 
-        var token = GenerateJwtToken(user, activeTenant.Id, activeMembership.Role);
+        string? deptCode = null;
+        string? deptName = null;
+        try
+        {
+            var empProfile = await _context.Employees
+                .IgnoreQueryFilters()
+                .Include(e => e.Department)
+                .FirstOrDefaultAsync(e => e.TenantId == activeTenant.Id && (e.UserId == user.Id || e.Email == user.Email), cancellationToken);
+
+            deptCode = empProfile?.Department?.Code;
+            deptName = empProfile?.Department?.Name;
+        }
+        catch { }
+
+        var token = GenerateJwtToken(user, activeTenant.Id, activeMembership.Role, deptCode);
 
         var loginAudit = new AuditLog
         {
@@ -247,6 +268,7 @@ public class IdentityService : IIdentityService
                 user.Email,
                 Tenant = activeTenant.Name,
                 Role = activeMembership.Role.ToString(),
+                Department = deptCode,
                 Client = "Orbit Web App",
                 Method = "PasswordAuth"
             }),
@@ -264,7 +286,10 @@ public class IdentityService : IIdentityService
             {
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
-                FullName = user.FullName
+                FullName = user.FullName,
+                Role = activeMembership.Role.ToString(),
+                DepartmentCode = deptCode,
+                DepartmentName = deptName
             },
             ActiveTenant = new TenantSummaryDto
             {
@@ -293,7 +318,22 @@ public class IdentityService : IIdentityService
             throw new TenantAccessDeniedException("User is not an active member of the requested company.");
 
         var targetTenant = targetMembership.Tenant;
-        var token = GenerateJwtToken(user, targetTenant.Id, targetMembership.Role);
+
+        string? deptCode = null;
+        string? deptName = null;
+        try
+        {
+            var empProfile = await _context.Employees
+                .IgnoreQueryFilters()
+                .Include(e => e.Department)
+                .FirstOrDefaultAsync(e => e.TenantId == targetTenant.Id && (e.UserId == user.Id || e.Email == user.Email), cancellationToken);
+
+            deptCode = empProfile?.Department?.Code;
+            deptName = empProfile?.Department?.Name;
+        }
+        catch { }
+
+        var token = GenerateJwtToken(user, targetTenant.Id, targetMembership.Role, deptCode);
 
         var availableTenants = memberships.Select(m => new TenantMembershipSummaryDto
         {
@@ -316,7 +356,8 @@ public class IdentityService : IIdentityService
             DetailsJson = JsonSerializer.Serialize(new
             {
                 TargetTenant = targetTenant.Name,
-                Role = targetMembership.Role.ToString()
+                Role = targetMembership.Role.ToString(),
+                Department = deptCode
             }),
             IpAddress = _currentUserService?.IpAddress ?? "127.0.0.1",
             TimestampUtc = DateTime.UtcNow
@@ -332,7 +373,10 @@ public class IdentityService : IIdentityService
             {
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
-                FullName = user.FullName
+                FullName = user.FullName,
+                Role = targetMembership.Role.ToString(),
+                DepartmentCode = deptCode,
+                DepartmentName = deptName
             },
             ActiveTenant = new TenantSummaryDto
             {
@@ -384,7 +428,7 @@ public class IdentityService : IIdentityService
         return membership?.Role;
     }
 
-    private string GenerateJwtToken(ApplicationUser user, Guid tenantId, TenantRole role)
+    private string GenerateJwtToken(ApplicationUser user, Guid tenantId, TenantRole role, string? departmentCode = null)
     {
         var secretKey = _configuration["Jwt:SecretKey"] ?? "OrbitBusinessSuiteSuperSecretKeyForDevelopmentAndTestingPurposesOnly2026!";
         var issuer = _configuration["Jwt:Issuer"] ?? "https://orbit.business";
@@ -401,6 +445,11 @@ public class IdentityService : IIdentityService
             new("role", role.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        if (!string.IsNullOrEmpty(departmentCode))
+        {
+            claims.Add(new Claim("dept", departmentCode));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

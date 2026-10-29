@@ -18,6 +18,22 @@ public class AttendanceLog : BaseEntity, ITenantScopedEntity, IAuditableEntity
     public decimal? TotalHours { get; set; }
 
     public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
+    public ActivityState ActivityState { get; set; } = ActivityState.NotStarted;
+
+    public DateTime? WorkStartedAtUtc { get; set; }
+    public DateTime? WorkEndedAtUtc { get; set; }
+    public DateTime? CurrentBreakStartedAtUtc { get; set; }
+    public DateTime? LastWorkResumedAtUtc { get; set; }
+
+    public int TotalWorkSeconds { get; set; } = 0;
+    public int TotalBreakSeconds { get; set; } = 0;
+
+    public bool IsLate { get; set; } = false;
+    public int LateMinutes { get; set; } = 0;
+    public int FaultsCount { get; set; } = 0;
+    public string? FaultReason { get; set; }
+    public DateTime? LastHeartbeatUtc { get; set; }
+
     public string WorkLocation { get; set; } = "Office";
     public string? Notes { get; set; }
 

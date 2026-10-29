@@ -41,6 +41,47 @@ public class EmployeeProfile : BaseEntity, ITenantScopedEntity, IAuditableEntity
     public bool IsActive { get; set; } = true;
     public DateTime? HireDateUtc { get; set; }
 
+    /// <summary>
+    /// Annual vacation days allocated (default: 21 days).
+    /// </summary>
+    public int VacationDaysAllocated { get; set; } = 21;
+
+    /// <summary>
+    /// Total approved vacation days used. When this exceeds VacationDaysAllocated, balance becomes negative.
+    /// </summary>
+    public decimal VacationDaysUsed { get; set; } = 0;
+
+    /// <summary>
+    /// Remaining balance. If negative, represents deficit / unpaid vacation days.
+    /// </summary>
+    public decimal VacationDaysRemaining => (decimal)VacationDaysAllocated - VacationDaysUsed;
+
+    /// <summary>
+    /// Compensation contract fields for salary and payroll calculation.
+    /// </summary>
+    public decimal BaseMonthlySalary { get; set; } = 3500.00m;
+    public decimal HourlyRate { get; set; } = 20.00m;
+    public decimal OvertimeRate { get; set; } = 30.00m;
+
+    /// <summary>
+    /// Employment contract specifications stored in the database.
+    /// </summary>
+    public string ContractType { get; set; } = "Permanent Full-Time";
+    public DateTime? ContractStartDateUtc { get; set; }
+    public DateTime? ContractEndDateUtc { get; set; }
+    public string? ContractDocumentUrl { get; set; }
+    public string? ContractNotes { get; set; }
+
+    /// <summary>
+    /// Day price: Monthly Salary divided by 30.
+    /// </summary>
+    public decimal DailyRate => BaseMonthlySalary > 0 ? Math.Round(BaseMonthlySalary / 30.0m, 2) : 0m;
+
+    /// <summary>
+    /// Hour price: Day price divided by 9 (i.e. Monthly Salary / 270).
+    /// </summary>
+    public decimal CalculatedHourlyRate => DailyRate > 0 ? Math.Round(DailyRate / 9.0m, 2) : 0m;
+
     public string? CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
 

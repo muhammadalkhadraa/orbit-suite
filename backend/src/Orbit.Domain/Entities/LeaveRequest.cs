@@ -27,6 +27,22 @@ public class LeaveRequest : BaseEntity, ITenantScopedEntity, IAuditableEntity
     public DateTime? ActionedAtUtc { get; set; }
     public string? RejectionReason { get; set; }
 
+    /// <summary>
+    /// Employee's remaining vacation balance at the moment of request submission.
+    /// </summary>
+    public decimal RemainingBalanceAtRequest { get; set; } = 0;
+
+    /// <summary>
+    /// Resulting balance after manager approval (can become negative).
+    /// </summary>
+    public decimal? ResultingBalanceAfterApproval { get; set; }
+
+    /// <summary>
+    /// Indicates whether this approved vacation has been synchronized and forwarded to the HR department.
+    /// </summary>
+    public bool IsForwardedToHr { get; set; } = false;
+    public DateTime? ForwardedToHrAtUtc { get; set; }
+
     public string? CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
 }

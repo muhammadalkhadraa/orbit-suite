@@ -23,6 +23,16 @@ public class EmployeeSummaryDto
     public string? ReportsToName { get; set; }
     public bool IsActive { get; set; }
     public DateTime? HireDateUtc { get; set; }
+    public decimal BaseSalary { get; set; }
+    public decimal DailyRate => BaseSalary > 0 ? Math.Round(BaseSalary / 30.0m, 2) : 0m;
+    public decimal HourlyRate { get; set; }
+    public decimal OvertimeRate { get; set; }
+    public string ContractType { get; set; } = "Permanent Full-Time";
+    public DateTime? ContractStartDateUtc { get; set; }
+    public DateTime? ContractEndDateUtc { get; set; }
+    public string? ContractNotes { get; set; }
+    public int VacationDaysAllocated { get; set; }
+    public decimal VacationDaysRemaining { get; set; }
 }
 
 public class CreateEmployeeRequest
@@ -39,6 +49,14 @@ public class CreateEmployeeRequest
     public DateTime? HireDateUtc { get; set; }
     public bool CreateLoginAccount { get; set; }
     public string? InitialPassword { get; set; }
+    public decimal BaseSalary { get; set; }
+    public decimal HourlyRate { get; set; }
+    public decimal OvertimeRate { get; set; }
+    public string ContractType { get; set; } = "Permanent Full-Time";
+    public DateTime? ContractStartDateUtc { get; set; }
+    public DateTime? ContractEndDateUtc { get; set; }
+    public string? ContractNotes { get; set; }
+    public int VacationDaysAllocated { get; set; } = 21;
 }
 
 public class UpdateEmployeeRequest
@@ -53,4 +71,12 @@ public class UpdateEmployeeRequest
     public Guid? ReportsToEmployeeId { get; set; }
     public bool IsActive { get; set; }
     public DateTime? HireDateUtc { get; set; }
+    public decimal BaseSalary { get; set; }
+    public decimal HourlyRate { get; set; }
+    public decimal OvertimeRate { get; set; }
+    public string ContractType { get; set; } = "Permanent Full-Time";
+    public DateTime? ContractStartDateUtc { get; set; }
+    public DateTime? ContractEndDateUtc { get; set; }
+    public string? ContractNotes { get; set; }
+    public int VacationDaysAllocated { get; set; }
 }

@@ -38,6 +38,48 @@ export class AuthService {
     return this.activeTenantSubject.value?.role || null;
   }
 
+  public get currentDepartmentCode(): string {
+    if (this.currentUser?.departmentCode) {
+      return this.currentUser.departmentCode;
+    }
+    if (this.currentRole === 'Owner' || this.currentRole === 'Admin') {
+      return 'IT';
+    }
+    return '';
+  }
+
+  public canAccessModule(moduleKey: string): boolean {
+    const role = this.currentRole;
+    const dept = this.currentDepartmentCode;
+
+    // Executive Owner, Admin, or IT department has unrestricted clearance for ALL screens
+    if (role === 'Owner' || role === 'Admin' || dept === 'IT') {
+      return true;
+    }
+
+    // Common employee utility modules (personal dashboard, tasks, activity clock)
+    if (moduleKey === 'dashboard' || moduleKey === 'tasks' || moduleKey === 'activity') {
+      return true;
+    }
+
+    // HR can ONLY access HR and Employees directory
+    if (dept === 'HR') {
+      return moduleKey === 'hr' || moduleKey === 'employees';
+    }
+
+    // Accounting can ONLY access Finance/Accounting
+    if (dept === 'FIN') {
+      return moduleKey === 'finance';
+    }
+
+    // Other departments (Sales, Stores, etc.)
+    if (dept === 'SALES') return moduleKey === 'crm';
+    if (dept === 'STORES') return moduleKey === 'inventory';
+    if (dept === 'AUDIT') return moduleKey === 'compliance';
+
+    return false;
+  }
+
   public getToken(): string | null {
     return sessionStorage.getItem(this.TOKEN_KEY);
   }
@@ -110,57 +152,95 @@ export class AuthService {
     }
     sessionStorage.removeItem(this.TOKEN_KEY);
     sessionStorage.removeItem(this.SESSION_KEY);
+    sessionStorage.removeItem('orbit_prompted_start');
+    sessionStorage.removeItem('orbit_activity_status');
     this.currentUserSubject.next(null);
     this.activeTenantSubject.next(null);
     this.availableTenantsSubject.next([]);
   }
 
   public loginAsDemoRole(role: TenantRole): void {
-    let email = 'alex.morgan@orbitbusiness.io';
-    let name = 'Alex Morgan';
+    if (role === 'Owner') {
+      this.loginAsPersona('admin');
+    } else if (role === 'Manager') {
+      this.loginAsPersona('amr');
+    } else {
+      this.loginAsPersona('abdelrazik');
+    }
+  }
 
-    if (role === 'Manager') {
-      email = 'sarah.jenkins@orbitbusiness.io';
-      name = 'Sarah Jenkins';
-    } else if (role === 'Employee') {
-      email = 'david.lee@orbitbusiness.io';
-      name = 'David Lee';
+  public loginAsPersona(personaKey: 'admin' | 'muhammad' | 'amr' | 'abdelrazik'): void {
+    let email = 'admin@kazareen.com';
+    let fullName = 'Kazareen Administrator';
+    let role: TenantRole = 'Owner';
+    let departmentCode = 'EXEC';
+    let departmentName = 'Executive Leadership';
+
+    if (personaKey === 'muhammad') {
+      email = 'alkhadraam@gmail.com';
+      fullName = 'Muhammad Alkhadraa';
+      role = 'Admin';
+      departmentCode = 'IT';
+      departmentName = 'Information Technology';
+    } else if (personaKey === 'amr') {
+      email = 'amr@kazareen.com';
+      fullName = 'Amr El-Sayed';
+      role = 'Employee';
+      departmentCode = 'HR';
+      departmentName = 'Human Resources';
+    } else if (personaKey === 'abdelrazik') {
+      email = 'abdelrazik@kazareen.com';
+      fullName = 'Abdelrazik Hassan';
+      role = 'Employee';
+      departmentCode = 'FIN';
+      departmentName = 'Finance & Accounting';
     }
 
-    const demoAuth: AuthResponse = {
-      accessToken: 'demo_jwt_token_header.' + btoa(JSON.stringify({ sub: 'user-demo-' + role.toLowerCase(), role })) + '.signature',
-      tokenType: 'Bearer',
-      expiresInMinutes: 120,
-      user: {
-        id: 'user-demo-' + role.toLowerCase(),
-        email: email,
-        fullName: name
-      },
-      activeTenant: {
-        id: '11111111-2222-3333-4444-555555555555',
-        name: 'Apex Global Enterprises',
-        slug: 'apex-global',
-        role: role
-      },
-      availableTenants: [
-        {
-          tenantId: '11111111-2222-3333-4444-555555555555',
-          tenantName: 'Apex Global Enterprises',
-          tenantSlug: 'apex-global',
-          role: role,
-          status: 'Active'
-        },
-        {
-          tenantId: '99999999-8888-7777-6666-555555555555',
-          tenantName: 'Vanguard Industrial Corp',
-          tenantSlug: 'vanguard-corp',
-          role: role === 'Owner' ? 'Admin' : 'Employee',
-          status: 'Active'
+    this.http.post<ApiResponse<AuthResponse>>(`${this.apiUrl}/login`, {
+      email: email,
+      password: 'Password123!'
+    }).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          if (!res.data.user.departmentCode) {
+            res.data.user.departmentCode = departmentCode;
+            res.data.user.departmentName = departmentName;
+          }
+          this.setSession(res.data);
         }
-      ]
-    };
-
-    this.setSession(demoAuth);
+      },
+      error: () => {
+        const demoAuth: AuthResponse = {
+          accessToken: 'demo_token_' + Date.now(),
+          tokenType: 'Bearer',
+          expiresInMinutes: 60,
+          user: {
+            id: 'usr-' + personaKey,
+            email: email,
+            fullName: fullName,
+            role: role,
+            departmentCode: departmentCode,
+            departmentName: departmentName
+          },
+          activeTenant: {
+            id: '33333333-3333-3333-3333-333333333333',
+            name: 'Kazareen',
+            slug: 'kazareen',
+            role: role
+          },
+          availableTenants: [
+            {
+              tenantId: '33333333-3333-3333-3333-333333333333',
+              tenantName: 'Kazareen',
+              tenantSlug: 'kazareen',
+              role: role,
+              status: 'Active'
+            }
+          ]
+        };
+        this.setSession(demoAuth);
+      }
+    });
   }
 
   private setSession(auth: AuthResponse): void {
@@ -206,60 +286,94 @@ export class AuthService {
   }
 
   private activateDemoSession(email: string): AuthResponse {
-    let role: TenantRole = 'Owner';
-    let name = 'Alex Morgan';
-
-    if (email.includes('manager')) {
-      role = 'Manager';
-      name = 'Sarah Jenkins';
-    } else if (email.includes('employee')) {
-      role = 'Employee';
-      name = 'David Lee';
+    const e = (email || '').toLowerCase();
+    let personaKey: 'admin' | 'muhammad' | 'amr' | 'abdelrazik' = 'admin';
+    if (e.includes('alkhadraam') || e.includes('muhammad')) {
+      personaKey = 'muhammad';
+    } else if (e.includes('amr')) {
+      personaKey = 'amr';
+    } else if (e.includes('abdelrazik')) {
+      personaKey = 'abdelrazik';
     }
 
-    const demo: AuthResponse = {
+    let fullName = 'Kazareen Administrator';
+    let role: TenantRole = 'Owner';
+    let deptCode = 'EXEC';
+    let deptName = 'Executive Leadership';
+    if (personaKey === 'muhammad') {
+      fullName = 'Muhammad Alkhadraa';
+      role = 'Admin';
+      deptCode = 'IT';
+      deptName = 'Information Technology';
+    } else if (personaKey === 'amr') {
+      fullName = 'Amr El-Sayed';
+      role = 'Employee';
+      deptCode = 'HR';
+      deptName = 'Human Resources';
+    } else if (personaKey === 'abdelrazik') {
+      fullName = 'Abdelrazik Hassan';
+      role = 'Employee';
+      deptCode = 'FIN';
+      deptName = 'Finance & Accounting';
+    }
+
+    const demoAuth: AuthResponse = {
       accessToken: 'demo_token_' + Date.now(),
       tokenType: 'Bearer',
       expiresInMinutes: 60,
-      user: { id: 'usr-1', email, fullName: name },
+      user: {
+        id: 'usr-' + personaKey,
+        email: email,
+        fullName: fullName,
+        role: role,
+        departmentCode: deptCode,
+        departmentName: deptName
+      },
       activeTenant: {
-        id: '11111111-2222-3333-4444-555555555555',
-        name: 'Apex Global Enterprises',
-        slug: 'apex-global',
-        role
+        id: '33333333-3333-3333-3333-333333333333',
+        name: 'Kazareen',
+        slug: 'kazareen',
+        role: role
       },
       availableTenants: [
         {
-          tenantId: '11111111-2222-3333-4444-555555555555',
-          tenantName: 'Apex Global Enterprises',
-          tenantSlug: 'apex-global',
-          role,
+          tenantId: '33333333-3333-3333-3333-333333333333',
+          tenantName: 'Kazareen',
+          tenantSlug: 'kazareen',
+          role: role,
           status: 'Active'
         }
       ]
     };
-
-    this.setSession(demo);
-    return demo;
+    this.setSession(demoAuth);
+    return demoAuth;
   }
 
   private createDemoRegisteredSession(data: { fullName: string; email: string; companyName: string }): AuthResponse {
+    const company = data.companyName || 'Kazareen';
     const demo: AuthResponse = {
       accessToken: 'demo_token_' + Date.now(),
       tokenType: 'Bearer',
       expiresInMinutes: 60,
-      user: { id: 'usr-new', email: data.email, fullName: data.fullName },
+      user: {
+        id: 'usr-admin',
+        email: data.email,
+        fullName: data.fullName,
+        role: 'Owner',
+        departmentCode: 'EXEC',
+        departmentName: 'Executive Leadership'
+      },
       activeTenant: {
-        id: '22222222-3333-4444-5555-666666666666',
-        name: data.companyName,
-        slug: data.companyName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        id: 'kazareen-tenant-id-001',
+        name: company,
+        slug: company.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         role: 'Owner'
       },
       availableTenants: [
         {
-          tenantId: '22222222-3333-4444-5555-666666666666',
-          tenantName: data.companyName,
-          tenantSlug: data.companyName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          tenantId: 'kazareen-tenant-id-001',
+          tenantName: company,
+          tenantSlug: company.toLowerCase().replace(/[^a-z0-9]/g, '-'),
           role: 'Owner',
           status: 'Active'
         }

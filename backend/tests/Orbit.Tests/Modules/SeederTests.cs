@@ -85,7 +85,7 @@ public class SeederTests : IDisposable
         branches.Should().HaveCount(2);
 
         var departments = await db.Departments.IgnoreQueryFilters().Where(d => d.TenantId == tenant.Id).ToListAsync();
-        departments.Should().HaveCount(5);
+        departments.Should().HaveCount(10);
 
         var employees = await db.Employees.IgnoreQueryFilters().Where(e => e.TenantId == tenant.Id).ToListAsync();
         employees.Should().HaveCount(3);
@@ -128,6 +128,12 @@ public class SeederTests : IDisposable
 
         var reportExports = await db.ReportExports.IgnoreQueryFilters().Where(r => r.TenantId == tenant.Id).ToListAsync();
         reportExports.Should().HaveCount(2);
+
+        var certificates = await db.ComplianceCertificates.IgnoreQueryFilters().Where(c => c.TenantId == tenant.Id).ToListAsync();
+        certificates.Should().HaveCount(4);
+
+        var meetings = await db.AuditMeetings.IgnoreQueryFilters().Where(m => m.TenantId == tenant.Id).ToListAsync();
+        meetings.Should().HaveCount(3);
 
         // Act 2: Idempotent re-run
         await DatabaseSeeder.InitializeAndSeedAsync(db, userManager);

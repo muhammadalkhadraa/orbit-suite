@@ -9,6 +9,24 @@ export const roleGuard: CanActivateFn = (route) => {
   const router = inject(Router);
   const toastService = inject(ToastService);
 
+  const moduleKey = route.data?.['module'] as string | undefined;
+  if (moduleKey && !authService.canAccessModule(moduleKey)) {
+    const currentDept = authService.currentUser?.departmentName || authService.currentDepartmentCode || 'Department';
+    toastService.warning(
+      'Access Restricted',
+      `Department segregation active: ${currentDept} personnel do not have clearance for the ${moduleKey.toUpperCase()} module.`
+    );
+
+    if (authService.currentDepartmentCode === 'HR') {
+      router.navigate(['/app/hr']);
+    } else if (authService.currentDepartmentCode === 'FIN') {
+      router.navigate(['/app/finance']);
+    } else {
+      router.navigate(['/app/dashboard']);
+    }
+    return false;
+  }
+
   const allowedRoles = route.data?.['roles'] as TenantRole[] | undefined;
 
   if (!allowedRoles || allowedRoles.length === 0) {

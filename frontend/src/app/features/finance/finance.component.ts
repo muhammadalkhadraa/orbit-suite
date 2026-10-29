@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import {
   Invoice,
   InvoiceItem,
@@ -17,7 +18,14 @@ import {
   Customer,
   Product,
   Deal,
-  TenantRole
+  TenantRole,
+  PayrollRecord,
+  PayrollSummary,
+  GeneratePayrollBatchRequest,
+  ApprovePayrollBatchRequest,
+  EmployeePayslipSpreadsheet,
+  Employee,
+  InitiatePayrollRequest
 } from '../../core/models/models';
 
 @Component({
@@ -141,6 +149,13 @@ import {
           (click)="activeTab = 'payments'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           <span>Payment Receipts Ledger</span>
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'payroll'"
+          (click)="activeTab = 'payroll'; loadPayroll()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Monthly Payroll & Salaries ({{ payrollRecords.length }})</span>
         </button>
       </div>
 
@@ -315,6 +330,225 @@ import {
                   </td>
                 </tr>
               </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: MONTHLY PAYROLL (ACCOUNTING DESK) -->
+      <div *ngIf="activeTab === 'payroll'" class="tab-content">
+        <!-- Accounting Payroll Control Banner -->
+        <div class="payroll-desk-banner glass-panel" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div class="badge badge-emerald" style="margin-bottom: 0.35rem;">Accounting Payroll Desk • Abdelrazik Hassan</div>
+              <h3 class="font-heading-3" style="color: #f8fafc; margin-bottom: 0.25rem;">Corporate Salary Calculation & Ledger Approval</h3>
+              <p class="font-caption" style="color: #94a3b8; max-width: 750px;">
+                Calculate monthly payroll batches, base salaries, overtime rates, attendance deductions, and negative vacation deficits. Once approved by Accounting, sheets are synchronized with HR (Amr) for review and payslip email delivery.
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select [(ngModel)]="selectedPayrollMonth" (change)="loadPayroll()" class="select-filter font-mono">
+                <option [value]="10">October</option>
+                <option [value]="11">November</option>
+                <option [value]="12">December</option>
+              </select>
+              <select [(ngModel)]="selectedPayrollYear" (change)="loadPayroll()" class="select-filter font-mono">
+                <option [value]="2026">2026</option>
+              </select>
+              <button (click)="generatePayrollBatch()" [disabled]="payrollLoading" class="btn-primary" title="Calculate salaries for all personnel including Muhammad">
+                <span>⚡ Calculate Payroll Batch</span>
+              </button>
+              <button (click)="approvePayrollBatch()" [disabled]="payrollLoading" class="btn-secondary" style="border-color: #10b981; color: #10b981;" title="Approve batch for HR distribution">
+                <span>✓ Approve for HR</span>
+              </button>
+              <button (click)="downloadMasterSpreadsheet()" class="btn-secondary" title="Download Master Company Ledger as CSV/Excel">
+                <span>📥 Master Excel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 1: Choose Employee for Salary Calculation (Accounting - Abdelrazik) -->
+        <div class="glass-panel" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border: 1px solid rgba(59, 130, 246, 0.35); background: rgba(59, 130, 246, 0.05); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <span class="badge badge-indigo" style="font-weight: 700; letter-spacing: 0.03em;">STEP 1: INITIATE SALARY CALCULATION</span>
+                <span class="badge badge-emerald">Accounting (Abdelrazik)</span>
+              </div>
+              <h4 class="font-heading-4" style="color: #f8fafc; margin-bottom: 0.2rem;">Select Employee & Request HR Attendance / Deduction Sheet</h4>
+              <p class="font-caption" style="color: #94a3b8; margin: 0; max-width: 700px;">
+                Choose which employee's salary to calculate. This sends a request to HR (Amr) to submit the verified sheet with total holidays, absences, overtime hours, and money consumed.
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label class="font-caption text-secondary" style="font-weight: 600; white-space: nowrap;">Target Employee:</label>
+                <select [(ngModel)]="selectedEmployeeIdForPayroll" class="select-filter font-mono" style="min-width: 250px; background: #0f172a; color: #f8fafc; border: 1px solid #334155; padding: 0.5rem 0.75rem; border-radius: 8px;">
+                  <option value="">-- Choose Employee --</option>
+                  <option *ngFor="let emp of employees" [value]="emp.id">
+                    {{ emp.fullName }} ({{ emp.jobTitle }} • {{ emp.departmentName }})
+                  </option>
+                </select>
+              </div>
+              <button (click)="initiatePayrollForSelected()" [disabled]="payrollLoading || !selectedEmployeeIdForPayroll" class="btn-primary" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; padding: 0.6rem 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); border-radius: 8px; cursor: pointer;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                <span>Request HR Attendance Sheet</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Summary Ribbon -->
+        <div class="metrics-grid" style="margin-bottom: 1.5rem;">
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">TOTAL GROSS EXPENSE</span>
+              <span class="metric-icon">💼</span>
+            </div>
+            <div class="metric-value font-heading-2 text-indigo">\${{ totalGrossPay | number:'1.2-2' }}</div>
+            <span class="metric-sub text-muted">Base salaries + overtime</span>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">NET SALARIES DISBURSABLE</span>
+              <span class="metric-icon">💵</span>
+            </div>
+            <div class="metric-value font-heading-2 text-emerald">\${{ totalNetPay | number:'1.2-2' }}</div>
+            <span class="metric-sub text-muted">Net after withholdings</span>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">OVERTIME DISBURSED</span>
+              <span class="metric-icon">⚡</span>
+            </div>
+            <div class="metric-value font-heading-2 text-cyan">\${{ totalOvertimePay | number:'1.2-2' }}</div>
+            <span class="metric-sub text-muted">From attendance tracker</span>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">VACATION DEFICIT DEDUCTIONS</span>
+              <span class="metric-icon">🏖️</span>
+            </div>
+            <div class="metric-value font-heading-2 text-rose">\${{ totalVacationDeficitDeductions | number:'1.2-2' }}</div>
+            <span class="metric-sub text-muted">Unpaid leave below 0 balance</span>
+          </div>
+        </div>
+
+        <!-- Master Itemized Payroll Table -->
+        <div class="table-container glass-panel">
+          <div style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h4 class="font-heading-4">Calculated Salary Sheets & Personnel Compensation</h4>
+              <p class="font-caption text-secondary">October 2026 Monthly Statement • Prepared by Accounting Desk (Abdelrazik)</p>
+            </div>
+            <span class="badge badge-emerald">{{ payrollRecords.length }} Personnel Reconciled</span>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>PAYROLL #</th>
+                <th>EMPLOYEE</th>
+                <th>DEPARTMENT</th>
+                <th>BASE SALARY</th>
+                <th>OVERTIME</th>
+                <th>DEDUCTIONS</th>
+                <th>NET SALARY</th>
+                <th>WORKFLOW STATUS</th>
+                <th>HR EMAIL SYNC</th>
+                <th style="text-align: right;">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rec of payrollRecords" class="table-row">
+                <td class="font-mono text-secondary">{{ rec.payrollNumber }}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 0.75rem;">
+                      {{ rec.employeeName.charAt(0) }}
+                    </div>
+                    <div>
+                      <div class="font-body-bold">{{ rec.employeeName }}</div>
+                      <div class="font-caption text-secondary">{{ rec.email }}</div>
+                      <div *ngIf="rec.notes" class="font-caption" style="color: #38bdf8; font-size: 0.72rem; margin-top: 0.2rem; max-width: 300px;">
+                        📝 {{ rec.notes }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge badge-cyan">{{ rec.departmentName }}</span>
+                </td>
+                <td class="font-mono">\${{ rec.baseSalary | number:'1.2-2' }}</td>
+                <td>
+                  <div *ngIf="rec.overtimeHours > 0">
+                    <span class="font-mono text-cyan">+\${{ rec.overtimePay | number:'1.2-2' }}</span>
+                    <div class="font-caption text-secondary">{{ rec.overtimeHours }}h &#64; \${{ rec.overtimeRate }}/h</div>
+                  </div>
+                  <span *ngIf="rec.overtimeHours === 0" class="text-secondary">—</span>
+                </td>
+                <td class="font-mono text-rose">
+                  -\${{ rec.totalDeductions | number:'1.2-2' }}
+                  <div *ngIf="rec.absenceDeduction > 0" class="font-caption" style="color: #f43f5e; font-size: 0.7rem;">
+                    Consumed: \${{ rec.absenceDeduction | number:'1.2-2' }}
+                  </div>
+                </td>
+                <td>
+                  <span class="font-mono font-bold text-emerald" style="font-size: 1rem;">
+                    \${{ rec.netPay | number:'1.2-2' }}
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="rec.status === 'PendingHrSheet'" class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.35rem 0.6rem;">
+                    ⏳ Awaiting HR Sheet
+                  </span>
+                  <span *ngIf="rec.status === 'HrSheetSubmitted'" class="badge" style="background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.4); padding: 0.35rem 0.6rem;">
+                    📥 HR Sheet Received
+                  </span>
+                  <span *ngIf="rec.status === 'Approved'" class="badge badge-emerald" style="padding: 0.35rem 0.6rem;">
+                    ✓ Approved • Sent to HR
+                  </span>
+                  <span *ngIf="rec.status === 'Paid'" class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); padding: 0.35rem 0.6rem;">
+                    ✉️ Paid & Emailed
+                  </span>
+                  <span *ngIf="rec.status === 'Draft'" class="badge badge-slate">
+                    Draft
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="rec.isEmailedToEmployee" class="badge badge-emerald" title="Dispatched by HR">
+                    ✉️ Emailed
+                  </span>
+                  <span *ngIf="!rec.isEmailedToEmployee && rec.status === 'Approved'" class="badge badge-cyan" title="Awaiting HR Email Dispatch">
+                    📤 Pending HR Email
+                  </span>
+                  <span *ngIf="!rec.isEmailedToEmployee && rec.status !== 'Approved'" class="badge badge-amber" title="Awaiting HR Review">
+                    ⏳ In Calculation
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+                    <!-- Step 3 Action: When HR sheet is submitted, Abdelrazik makes payroll & sends to HR -->
+                    <button *ngIf="rec.status === 'HrSheetSubmitted'"
+                            (click)="finalizePayrollRecordToHr(rec)"
+                            class="btn-primary"
+                            style="padding: 0.4rem 0.85rem; font-size: 0.75rem; background: linear-gradient(135deg, #10b981, #059669); border: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);"
+                            title="Calculate Net Salary from HR Sheet and Send to HR">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span>⚡ Step 3: Make Payroll & Send to HR</span>
+                    </button>
+
+                    <button (click)="downloadIndividualPayslip(rec)" class="btn-icon btn-action-emerald" title="Download Excel/CSV Payslip">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1391,11 +1625,33 @@ import {
 export class FinanceComponent implements OnInit {
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  private toast = inject(ToastService);
 
   public activeTenant$ = this.auth.activeTenant$;
   public currentRole: TenantRole = 'Owner';
 
-  public activeTab: 'invoices' | 'payments' = 'invoices';
+  public activeTab: 'invoices' | 'payments' | 'payroll' = 'invoices';
+
+  public payrollRecords: PayrollRecord[] = [];
+  public payrollSummary: PayrollSummary | null = null;
+  public selectedPayrollYear = 2026;
+  public selectedPayrollMonth = 10;
+  public payrollLoading = false;
+  public employees: Employee[] = [];
+  public selectedEmployeeIdForPayroll: string = '';
+
+  public get totalGrossPay(): number {
+    return this.payrollSummary?.totalGrossPay || 0;
+  }
+  public get totalNetPay(): number {
+    return this.payrollSummary?.totalNetPay || 0;
+  }
+  public get totalOvertimePay(): number {
+    return this.payrollSummary?.totalOvertimePay || 0;
+  }
+  public get totalVacationDeficitDeductions(): number {
+    return this.payrollSummary?.totalVacationDeficitDeductions || 0;
+  }
 
   public invoices: Invoice[] = [];
   public filteredInvoices: Invoice[] = [];
@@ -1451,6 +1707,8 @@ export class FinanceComponent implements OnInit {
     this.loadCustomers();
     this.loadProducts();
     this.loadDeals();
+    this.loadPayroll();
+    this.loadEmployees();
   }
 
   public loadInvoices(): void {
@@ -1735,6 +1993,147 @@ export class FinanceComponent implements OnInit {
 
   public printInvoice(): void {
     window.print();
+  }
+
+  public loadPayroll(): void {
+    this.payrollLoading = true;
+    this.api.getPayrollRecords(this.selectedPayrollYear, this.selectedPayrollMonth).subscribe(res => {
+      if (res.success && res.data) {
+        this.payrollRecords = res.data;
+      }
+      this.payrollLoading = false;
+    });
+
+    this.api.getPayrollSummary(this.selectedPayrollYear, this.selectedPayrollMonth).subscribe(res => {
+      if (res.success && res.data) {
+        this.payrollSummary = res.data;
+      }
+    });
+  }
+
+  public generatePayrollBatch(): void {
+    this.payrollLoading = true;
+    this.api.generatePayrollBatch({
+      year: this.selectedPayrollYear,
+      month: this.selectedPayrollMonth
+    }).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.payrollRecords = res.data;
+          this.loadPayroll();
+          this.toast.success(
+            'Payroll Calculated',
+            `October 2026 payroll batch for ${this.payrollRecords.length} employees calculated. Ready for approval and HR review.`
+          );
+        }
+        this.payrollLoading = false;
+      },
+      error: () => {
+        this.payrollLoading = false;
+      }
+    });
+  }
+
+  public approvePayrollBatch(): void {
+    this.payrollLoading = true;
+    this.api.approvePayrollBatch({
+      year: this.selectedPayrollYear,
+      month: this.selectedPayrollMonth
+    }).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.payrollRecords = res.data;
+          this.loadPayroll();
+          this.toast.success(
+            'Payroll Batch Approved',
+            'Payroll approved by Accounting and synchronized to HR (Amr) for review and payslip distribution.'
+          );
+        }
+        this.payrollLoading = false;
+      },
+      error: () => {
+        this.payrollLoading = false;
+      }
+    });
+  }
+
+  public loadEmployees(): void {
+    this.api.getEmployees().subscribe(res => {
+      if (res.success && res.data) {
+        this.employees = res.data.data || [];
+        if (this.employees.length > 0 && !this.selectedEmployeeIdForPayroll) {
+          this.selectedEmployeeIdForPayroll = this.employees[0].id;
+        }
+      }
+    });
+  }
+
+  public initiatePayrollForSelected(): void {
+    if (!this.selectedEmployeeIdForPayroll) {
+      this.toast.error('Selection Required', 'Please select an employee first.');
+      return;
+    }
+
+    const emp = this.employees.find(e => e.id === this.selectedEmployeeIdForPayroll);
+    const empName = emp ? emp.fullName : 'the employee';
+
+    this.payrollLoading = true;
+    this.api.initiatePayroll({
+      employeeId: this.selectedEmployeeIdForPayroll,
+      year: this.selectedPayrollYear,
+      month: this.selectedPayrollMonth
+    }).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.toast.success(
+            'Calculation Initiated',
+            `Salary calculation initiated for ${empName}. HR (Amr) has been notified to send the Attendance & Deductions Sheet.`
+          );
+          this.loadPayroll();
+        }
+        this.payrollLoading = false;
+      },
+      error: () => {
+        this.payrollLoading = false;
+      }
+    });
+  }
+
+  public finalizePayrollRecordToHr(rec: PayrollRecord): void {
+    this.payrollLoading = true;
+    this.api.finalizePayrollToHr(rec.id).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.toast.success(
+            'Payroll Calculated & Sent to HR',
+            `Net salary calculated ($${res.data.netPay.toFixed(2)}) based on HR sheet and sent to HR (Amr) for review and email dispatch.`
+          );
+          this.loadPayroll();
+        }
+        this.payrollLoading = false;
+      },
+      error: () => {
+        this.payrollLoading = false;
+      }
+    });
+  }
+
+  public downloadMasterSpreadsheet(): void {
+    this.api.getMasterPayrollSpreadsheet(this.selectedPayrollYear, this.selectedPayrollMonth).subscribe(res => {
+      if (res.success && res.data) {
+        this.downloadCsvFile(res.data.fileContent, res.data.fileName);
+        this.toast.success('Download Complete', `Exported ${res.data.fileName}`);
+      }
+    });
+  }
+
+  public downloadIndividualPayslip(rec: PayrollRecord): void {
+    this.api.getEmployeePayslipSpreadsheet(rec.id).subscribe(res => {
+      if (res.success && res.data) {
+        this.downloadCsvFile(res.data.fileContent, res.data.fileName);
+        this.toast.success('Payslip Exported', `Downloaded spreadsheet for ${rec.employeeName}`);
+      }
+    });
   }
 
   private downloadCsvFile(csvContent: string, filename: string): void {

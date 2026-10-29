@@ -239,8 +239,8 @@ import { AuthService } from '../../core/services/auth.service';
   `]
 })
 export class LoginComponent {
-  public email = 'alex.morgan@orbitbusiness.io';
-  public password = 'OrbitPassword123!';
+  public email = 'admin@kazareen.com';
+  public password = 'Password123!';
   public loading = false;
   public errorMessage: string | null = null;
 
@@ -253,7 +253,7 @@ export class LoginComponent {
     this.authService.login({ email: this.email, password: this.password }).subscribe({
       next: () => {
         this.loading = false;
-        this.router.navigate(['/app/tasks']);
+        this.router.navigate(['/app/hr']);
       },
       error: err => {
         this.loading = false;
@@ -263,7 +263,27 @@ export class LoginComponent {
   }
 
   public quickLogin(role: 'Owner' | 'Manager' | 'Employee'): void {
-    this.authService.loginAsDemoRole(role);
-    this.router.navigate(['/app/tasks']);
+    if (role === 'Owner') {
+      this.email = 'admin@kazareen.com';
+    } else if (role === 'Manager') {
+      this.email = 'amr@kazareen.com';
+    } else {
+      this.email = 'abdelrazik@kazareen.com';
+    }
+    this.password = 'Password123!';
+    this.loading = true;
+    this.errorMessage = null;
+
+    this.authService.login({ email: this.email, password: this.password }).subscribe({
+      next: () => {
+        this.loading = false;
+        this.router.navigate(['/app/hr']);
+      },
+      error: () => {
+        this.loading = false;
+        this.authService.loginAsDemoRole(role);
+        this.router.navigate(['/app/hr']);
+      }
+    });
   }
 }

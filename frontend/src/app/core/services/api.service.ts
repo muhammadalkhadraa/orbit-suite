@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ApiResponse, Branch, Customer, CreateCustomerRequest, Department, Employee, PagedResponse, TaskItem, TenantDetails, Deal, CreateDealRequest, UpdateDealRequest, UpdateDealStageRequest, DealStage, DealMetrics, SupportTicket, TicketComment, CreateTicketRequest, UpdateTicketRequest, UpdateTicketStatusRequest, AddTicketCommentRequest, TicketMetrics, TicketStatus, TicketPriority, TicketCategory, Product, ProductInventory, StockMovement, CreateProductRequest, UpdateProductRequest, AdjustStockRequest, InventoryMetrics, ProductCategory, StockMovementType, Invoice, InvoiceItem, PaymentRecord, CreateInvoiceRequest, UpdateInvoiceRequest, RecordPaymentRequest, FinancialMetrics, InvoiceStatus, PaymentMethod, WorkOrder, BillOfMaterials, BomItem, CreateWorkOrderRequest, UpdateWorkOrderRequest, UpdateWorkOrderStatusRequest, CreateBomRequest, ManufacturingMetrics, WorkOrderStatus, WorkOrderPriority, LeaveRequest, CreateLeaveRequestRequest, ActionLeaveRequestRequest, LeaveRequestFilter, AttendanceLog, CheckInRequest, CheckOutRequest, RecordAttendanceRequest, AttendanceFilter, ShiftSchedule, CreateShiftScheduleRequest, UpdateShiftScheduleRequest, HrMetrics, LeaveType, LeaveStatus, AttendanceStatus, ShiftType, ExecutiveDashboard, ReportExportRequest, ReportExport, ReportExportHistory, ReportType, ExportFormat, AuditLog, AuditLogFilter } from '../models/models';
+import { ApiResponse, Branch, Customer, CreateCustomerRequest, Department, Employee, PagedResponse, TaskItem, TenantDetails, Deal, CreateDealRequest, UpdateDealRequest, UpdateDealStageRequest, DealStage, DealMetrics, SupportTicket, TicketComment, CreateTicketRequest, UpdateTicketRequest, UpdateTicketStatusRequest, AddTicketCommentRequest, TicketMetrics, TicketStatus, TicketPriority, TicketCategory, Product, ProductInventory, StockMovement, CreateProductRequest, UpdateProductRequest, AdjustStockRequest, InventoryMetrics, ProductCategory, StockMovementType, Invoice, InvoiceItem, PaymentRecord, CreateInvoiceRequest, UpdateInvoiceRequest, RecordPaymentRequest, FinancialMetrics, InvoiceStatus, PaymentMethod, WorkOrder, BillOfMaterials, BomItem, CreateWorkOrderRequest, UpdateWorkOrderRequest, UpdateWorkOrderStatusRequest, CreateBomRequest, ManufacturingMetrics, WorkOrderStatus, WorkOrderPriority, LeaveRequest, CreateLeaveRequestRequest, ActionLeaveRequestRequest, LeaveRequestFilter, AttendanceLog, CheckInRequest, CheckOutRequest, RecordAttendanceRequest, AttendanceFilter, ShiftSchedule, CreateShiftScheduleRequest, UpdateShiftScheduleRequest, HrMetrics, LeaveType, LeaveStatus, AttendanceStatus, ShiftType, ExecutiveDashboard, ReportExportRequest, ReportExport, ReportExportHistory, ReportType, ExportFormat, AuditLog, AuditLogFilter, EmployeeVacationBalance, ComplianceCertificate, CreateCertificateRequest, AuditMeeting, CreateAuditMeetingRequest, ComplianceDashboard, PayrollRecord, GeneratePayrollBatchRequest, ApprovePayrollBatchRequest, PayrollSummary, EmployeePayslipSpreadsheet, SendEmailResult, InitiatePayrollRequest, SubmitHrSheetRequest, EmployeeSalaryProfile } from '../models/models';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
 
@@ -19,14 +19,23 @@ export class ApiService {
   ];
 
   private mockDepartments: Department[] = [
-    { id: 'dp-1', tenantId: '11111111-2222-3333-4444-555555555555', name: 'Operations & Logistics', code: 'OPS', description: 'Supply chain & daily fulfillment', isActive: true, employeeCount: 9 },
-    { id: 'dp-2', tenantId: '11111111-2222-3333-4444-555555555555', name: 'Engineering & Technology', code: 'ENG', description: 'Core product development', isActive: true, employeeCount: 13 }
+    { id: 'dp-hr', tenantId: 'kazareen-tenant-id-001', name: 'Human Resources', code: 'HR', description: 'Workforce, people operations, recruitment & payroll governance', isActive: true, employeeCount: 4 },
+    { id: 'dp-fin', tenantId: 'kazareen-tenant-id-001', name: 'Finance & Accounting', code: 'FIN', description: 'General ledger, invoicing, accounts receivable & salary disbursement', isActive: true, employeeCount: 5 },
+    { id: 'dp-it', tenantId: 'kazareen-tenant-id-001', name: 'Information Technology', code: 'IT', description: 'Internal IT infrastructure, hardware, systems & network troubleshooting', isActive: true, employeeCount: 6 },
+    { id: 'dp-cs', tenantId: 'kazareen-tenant-id-001', name: 'Customer Service', code: 'CS', description: 'Guest inquiries, client support & helpdesk ticket management', isActive: true, employeeCount: 8 },
+    { id: 'dp-sales', tenantId: 'kazareen-tenant-id-001', name: 'Sales & Commercial', code: 'SALES', description: 'Revenue generation, client accounts & deal pipeline execution', isActive: true, employeeCount: 7 },
+    { id: 'dp-stores', tenantId: 'kazareen-tenant-id-001', name: 'Stores & Warehouses', code: 'STORES', description: 'Physical inventory allocations, SKU tracking & inter-branch transfers', isActive: true, employeeCount: 10 },
+    { id: 'dp-ops', tenantId: 'kazareen-tenant-id-001', name: 'Data Entry & Operations', code: 'OPS', description: 'Operational logs, routine workflows, task execution & shift rosters', isActive: true, employeeCount: 12 },
+    { id: 'dp-audit', tenantId: 'kazareen-tenant-id-001', name: 'Compliance & Audit', code: 'AUDIT', description: 'Regulatory certificates, ISO standards, safety audits & compliance reviews', isActive: true, employeeCount: 3 }
   ];
 
   private mockEmployees: Employee[] = [
-    { id: 'emp-1', tenantId: '11111111-2222-3333-4444-555555555555', userId: 'user-demo-owner', employeeNumber: 'EMP-001', firstName: 'Alex', lastName: 'Morgan', fullName: 'Alex Morgan', email: 'alex.morgan@orbitbusiness.io', jobTitle: 'Founder & CEO', branchId: 'br-1', branchName: 'Global Headquarters', departmentId: 'dp-1', departmentName: 'Operations & Logistics', isActive: true, hireDateUtc: '2024-01-15' },
-    { id: 'emp-2', tenantId: '11111111-2222-3333-4444-555555555555', userId: 'user-demo-manager', employeeNumber: 'EMP-002', firstName: 'Sarah', lastName: 'Jenkins', fullName: 'Sarah Jenkins', email: 'sarah.jenkins@orbitbusiness.io', jobTitle: 'Director of Operations', branchId: 'br-1', branchName: 'Global Headquarters', departmentId: 'dp-1', departmentName: 'Operations & Logistics', reportsToEmployeeId: 'emp-1', reportsToName: 'Alex Morgan', isActive: true, hireDateUtc: '2024-02-01' },
-    { id: 'emp-3', tenantId: '11111111-2222-3333-4444-555555555555', userId: 'user-demo-employee', employeeNumber: 'EMP-003', firstName: 'David', lastName: 'Lee', fullName: 'David Lee', email: 'david.lee@orbitbusiness.io', jobTitle: 'Logistics Coordinator', branchId: 'br-1', branchName: 'Global Headquarters', departmentId: 'dp-1', departmentName: 'Operations & Logistics', reportsToEmployeeId: 'emp-2', reportsToName: 'Sarah Jenkins', isActive: true, hireDateUtc: '2024-03-10' }
+    { id: 'emp-it', tenantId: 'kazareen-tenant-id-001', userId: 'usr-muhammad', employeeNumber: 'EMP-004', firstName: 'Muhammad', lastName: 'Alkhadraa', fullName: 'Muhammad Alkhadraa', email: 'alkhadraam@gmail.com', jobTitle: 'Senior IT Systems Engineer', branchId: 'br-1', branchName: 'Cairo Headquarters', departmentId: 'dp-it', departmentName: 'Information Technology', isActive: true, hireDateUtc: '2024-01-10' },
+    { id: 'emp-hr', tenantId: 'kazareen-tenant-id-001', userId: 'usr-amr', employeeNumber: 'EMP-005', firstName: 'Amr', lastName: 'El-Sayed', fullName: 'Amr El-Sayed', email: 'amr@kazareen.com', jobTitle: 'HR Operations Manager', branchId: 'br-1', branchName: 'Cairo Headquarters', departmentId: 'dp-hr', departmentName: 'Human Resources', isActive: true, hireDateUtc: '2024-02-15' },
+    { id: 'emp-acc', tenantId: 'kazareen-tenant-id-001', userId: 'usr-abdelrazik', employeeNumber: 'EMP-006', firstName: 'Abdelrazik', lastName: 'Hassan', fullName: 'Abdelrazik Hassan', email: 'abdelrazik@kazareen.com', jobTitle: 'Chief Accountant & Payroll Officer', branchId: 'br-1', branchName: 'Cairo Headquarters', departmentId: 'dp-fin', departmentName: 'Finance & Accounting', isActive: true, hireDateUtc: '2024-03-01' },
+    { id: 'emp-1', tenantId: 'kazareen-tenant-id-001', userId: 'user-demo-owner', employeeNumber: 'EMP-001', firstName: 'Alex', lastName: 'Morgan', fullName: 'Alex Morgan', email: 'alex.morgan@orbitbusiness.io', jobTitle: 'Founder & CEO', branchId: 'br-1', branchName: 'Cairo Headquarters', departmentId: 'dp-ops', departmentName: 'Data Entry & Operations', isActive: true, hireDateUtc: '2024-01-15' },
+    { id: 'emp-2', tenantId: 'kazareen-tenant-id-001', userId: 'user-demo-manager', employeeNumber: 'EMP-002', firstName: 'Sarah', lastName: 'Jenkins', fullName: 'Sarah Jenkins', email: 'sarah.jenkins@orbitbusiness.io', jobTitle: 'Director of Operations', branchId: 'br-1', branchName: 'Cairo Headquarters', departmentId: 'dp-ops', departmentName: 'Data Entry & Operations', reportsToEmployeeId: 'emp-1', reportsToName: 'Alex Morgan', isActive: true, hireDateUtc: '2024-02-01' },
+    { id: 'emp-3', tenantId: 'kazareen-tenant-id-001', userId: 'user-demo-employee', employeeNumber: 'EMP-003', firstName: 'David', lastName: 'Lee', fullName: 'David Lee', email: 'david.lee@orbitbusiness.io', jobTitle: 'Logistics Coordinator', branchId: 'br-1', branchName: 'Cairo Headquarters', departmentId: 'dp-ops', departmentName: 'Data Entry & Operations', reportsToEmployeeId: 'emp-2', reportsToName: 'Sarah Jenkins', isActive: true, hireDateUtc: '2024-03-10' }
   ];
 
   private mockTasks: TaskItem[] = [
@@ -839,9 +848,7 @@ export class ApiService {
 
   // 2. Branches
   public getBranches(): Observable<ApiResponse<Branch[]>> {
-    return this.http.get<ApiResponse<Branch[]>>(`${this.baseUrl}/organization/branches`).pipe(
-      catchError(() => of({ success: true, data: this.mockBranches }))
-    );
+    return this.http.get<ApiResponse<Branch[]>>(`${this.baseUrl}/organization/branches`);
   }
 
   public createBranch(branch: Partial<Branch>): Observable<ApiResponse<Branch>> {
@@ -893,9 +900,7 @@ export class ApiService {
 
   // 3. Departments
   public getDepartments(): Observable<ApiResponse<Department[]>> {
-    return this.http.get<ApiResponse<Department[]>>(`${this.baseUrl}/organization/departments`).pipe(
-      catchError(() => of({ success: true, data: this.mockDepartments }))
-    );
+    return this.http.get<ApiResponse<Department[]>>(`${this.baseUrl}/organization/departments`);
   }
 
   public createDepartment(dept: Partial<Department>): Observable<ApiResponse<Department>> {
@@ -945,80 +950,21 @@ export class ApiService {
 
   // 4. Employees
   public getEmployees(search?: string): Observable<ApiResponse<PagedResponse<Employee>>> {
-    return this.http.get<ApiResponse<PagedResponse<Employee>>>(`${this.baseUrl}/employees`).pipe(
-      catchError(() => {
-        let list = [...this.mockEmployees];
-        if (search) {
-          const s = search.toLowerCase();
-          list = list.filter(e => e.fullName.toLowerCase().includes(s) || e.jobTitle.toLowerCase().includes(s));
-        }
-        return of({
-          success: true,
-          data: {
-            success: true,
-            data: list,
-            pageNumber: 1,
-            pageSize: 20,
-            totalCount: list.length,
-            totalPages: 1,
-            hasPreviousPage: false,
-            hasNextPage: false
-          }
-        });
-      })
-    );
+    let url = `${this.baseUrl}/employees?pageSize=100`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return this.http.get<ApiResponse<PagedResponse<Employee>>>(url);
   }
 
   public createEmployee(emp: Partial<Employee>): Observable<ApiResponse<Employee>> {
-    return this.http.post<ApiResponse<Employee>>(`${this.baseUrl}/employees`, emp).pipe(
-      catchError(() => {
-        const newEmp: Employee = {
-          id: 'emp-' + Date.now(),
-          tenantId: this.authService.getActiveTenantId() || '',
-          employeeNumber: emp.employeeNumber || `EMP-${Date.now().toString().slice(-3)}`,
-          firstName: emp.firstName || '',
-          lastName: emp.lastName || '',
-          fullName: `${emp.firstName} ${emp.lastName}`.trim(),
-          email: emp.email || '',
-          phone: emp.phone,
-          jobTitle: emp.jobTitle || '',
-          branchId: emp.branchId,
-          departmentId: emp.departmentId,
-          isActive: true,
-          hireDateUtc: new Date().toISOString()
-        };
-        this.mockEmployees.push(newEmp);
-        return of({ success: true, data: newEmp, message: 'Employee profile created successfully.' });
-      })
-    );
+    return this.http.post<ApiResponse<Employee>>(`${this.baseUrl}/employees`, emp);
   }
 
   public updateEmployee(id: string, emp: Partial<Employee>): Observable<ApiResponse<Employee>> {
-    return this.http.put<ApiResponse<Employee>>(`${this.baseUrl}/employees/${id}`, emp).pipe(
-      catchError(() => {
-        const index = this.mockEmployees.findIndex(e => e.id === id);
-        if (index !== -1) {
-          const current = this.mockEmployees[index];
-          const updated: Employee = {
-            ...current,
-            ...emp,
-            fullName: `${emp.firstName ?? current.firstName} ${emp.lastName ?? current.lastName}`.trim()
-          };
-          this.mockEmployees[index] = updated;
-          return of({ success: true, data: updated, message: 'Employee profile updated successfully.' });
-        }
-        return of({ success: false, data: {} as Employee, message: 'Employee not found.' });
-      })
-    );
+    return this.http.put<ApiResponse<Employee>>(`${this.baseUrl}/employees/${id}`, emp);
   }
 
   public deleteEmployee(id: string): Observable<ApiResponse<null>> {
-    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/employees/${id}`).pipe(
-      catchError(() => {
-        this.mockEmployees = this.mockEmployees.filter(e => e.id !== id);
-        return of({ success: true, data: null, message: 'Employee profile deleted successfully.' });
-      })
-    );
+    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/employees/${id}`);
   }
 
   // 5. Tasks (Scoped by Current User & Role)
@@ -1414,7 +1360,8 @@ export class ApiService {
           filtered = filtered.filter(t =>
             t.ticketNumber.toLowerCase().includes(s) ||
             t.subject.toLowerCase().includes(s) ||
-            t.customerName.toLowerCase().includes(s));
+            (t.customerName ? t.customerName.toLowerCase().includes(s) : false) ||
+            (t.requestingEmployeeName ? t.requestingEmployeeName.toLowerCase().includes(s) : false));
         }
 
         const paged: PagedResponse<SupportTicket> = {
@@ -1469,19 +1416,26 @@ export class ApiService {
   public createTicket(request: CreateTicketRequest): Observable<ApiResponse<SupportTicket>> {
     return this.http.post<ApiResponse<SupportTicket>>(`${this.baseUrl}/tickets`, request).pipe(
       catchError(() => {
-        const cust = this.mockCustomers.find(c => c.id === request.customerId);
+        const cust = request.customerId ? this.mockCustomers.find(c => c.id === request.customerId) : undefined;
         const emp = this.mockEmployees.find(e => e.id === request.assignedEmployeeId);
+        const reqEmp = request.requestingEmployeeId ? this.mockEmployees.find(e => e.id === request.requestingEmployeeId) : undefined;
+        const dept = request.targetDepartmentId ? this.mockDepartments.find(d => d.id === request.targetDepartmentId) : undefined;
 
         const newTicket: SupportTicket = {
           id: 'tck-' + Date.now(),
           tenantId: this.authService.getActiveTenantId() || '',
-          ticketNumber: 'TCK-' + (this.mockTickets.length + 1001),
+          ticketNumber: request.isInternalItTicket ? 'IT-' + (this.mockTickets.length + 1001) : 'TCK-' + (this.mockTickets.length + 1001),
           subject: request.subject,
           description: request.description,
           customerId: request.customerId,
-          customerName: cust?.companyName || 'Associated Client',
+          customerName: cust?.companyName || (request.isInternalItTicket ? 'Internal Company Ticket' : 'Associated Client'),
+          isInternalItTicket: request.isInternalItTicket || false,
+          requestingEmployeeId: request.requestingEmployeeId,
+          requestingEmployeeName: reqEmp?.fullName,
+          targetDepartmentId: request.targetDepartmentId,
+          targetDepartmentName: dept?.name || 'Information Technology',
           assignedEmployeeId: request.assignedEmployeeId,
-          assignedEmployeeName: emp?.fullName || 'Assigned Representative',
+          assignedEmployeeName: emp?.fullName || 'IT Support Specialist',
           status: 'Open',
           statusName: 'Open',
           priority: request.priority,
@@ -2525,6 +2479,12 @@ export class ApiService {
   // HR & ATTENDANCE MANAGEMENT
   // ==========================================
 
+  private mockVacationBalances: Record<string, { allocated: number; used: number }> = {
+    'emp-1': { allocated: 25, used: 5 },
+    'emp-2': { allocated: 21, used: 8 },
+    'emp-3': { allocated: 21, used: 16 }
+  };
+
   private mockLeaveRequests: LeaveRequest[] = [
     {
       id: 'lr-1',
@@ -2542,6 +2502,10 @@ export class ApiService {
       approverEmployeeId: 'emp-2',
       approverEmployeeName: 'Sarah Jenkins',
       actionedAtUtc: new Date(Date.now() - 86400000).toISOString(),
+      remainingBalanceAtRequest: 8,
+      resultingBalanceAfterApproval: 5,
+      isForwardedToHr: true,
+      forwardedToHrAtUtc: new Date(Date.now() - 86400000).toISOString(),
       createdAtUtc: new Date(Date.now() - 86400000 * 2).toISOString()
     },
     {
@@ -2560,6 +2524,10 @@ export class ApiService {
       approverEmployeeId: 'emp-1',
       approverEmployeeName: 'Alex Morgan',
       actionedAtUtc: new Date(Date.now() - 86400000 * 4).toISOString(),
+      remainingBalanceAtRequest: 14,
+      resultingBalanceAfterApproval: 13,
+      isForwardedToHr: true,
+      forwardedToHrAtUtc: new Date(Date.now() - 86400000 * 4).toISOString(),
       createdAtUtc: new Date(Date.now() - 86400000 * 5).toISOString()
     },
     {
@@ -2575,6 +2543,8 @@ export class ApiService {
       daysCount: 2,
       reason: 'Compensatory time-off for weekend facility maintenance migration.',
       status: 'Pending',
+      remainingBalanceAtRequest: 5,
+      isForwardedToHr: false,
       createdAtUtc: new Date().toISOString()
     }
   ];
@@ -2740,6 +2710,7 @@ export class ApiService {
         const emp = this.mockEmployees.find(e => e.id === request.employeeId) || this.mockEmployees[2];
         const days = request.daysCount || 3;
         const reqNum = `LR-${new Date().getFullYear()}-${String(this.mockLeaveRequests.length + 1).padStart(4, '0')}`;
+        const balance = this.getMockVacationBalance(emp.id);
 
         const newLeave: LeaveRequest = {
           id: `lr-${Date.now()}`,
@@ -2754,6 +2725,8 @@ export class ApiService {
           daysCount: days,
           reason: request.reason,
           status: 'Pending',
+          remainingBalanceAtRequest: balance.remainingDays,
+          isForwardedToHr: false,
           createdAtUtc: new Date().toISOString()
         };
 
@@ -2772,10 +2745,46 @@ export class ApiService {
           leave.approverEmployeeName = 'Sarah Jenkins';
           leave.actionedAtUtc = new Date().toISOString();
           leave.rejectionReason = request.rejectionReason;
+          if (request.status === 'Approved') {
+            const b = this.mockVacationBalances[leave.employeeId] || { allocated: 21, used: 0 };
+            b.used += leave.daysCount;
+            this.mockVacationBalances[leave.employeeId] = b;
+            leave.resultingBalanceAfterApproval = b.allocated - b.used;
+            leave.isForwardedToHr = true;
+            leave.forwardedToHrAtUtc = new Date().toISOString();
+          }
         }
         return of({ success: !!leave, data: leave!, message: `Leave request ${request.status.toLowerCase()} successfully.` });
       })
     );
+  }
+
+  public getVacationBalance(employeeId?: string): Observable<ApiResponse<EmployeeVacationBalance>> {
+    const params: any = {};
+    if (employeeId) params.employeeId = employeeId;
+    return this.http.get<ApiResponse<EmployeeVacationBalance>>(`${this.baseUrl}/hr/vacation-balance`, { params }).pipe(
+      catchError(() => {
+        const empId = employeeId || 'emp-3';
+        const bal = this.getMockVacationBalance(empId);
+        return of({ success: true, data: bal });
+      })
+    );
+  }
+
+  private getMockVacationBalance(employeeId: string): EmployeeVacationBalance {
+    const emp = this.mockEmployees.find(e => e.id === employeeId) || this.mockEmployees[2];
+    const b = this.mockVacationBalances[emp.id] || { allocated: 21, used: 16 };
+    const remaining = b.allocated - b.used;
+    return {
+      employeeId: emp.id,
+      employeeName: emp.fullName,
+      employeeNumber: emp.employeeNumber,
+      departmentName: emp.departmentName || 'General',
+      allocatedDays: b.allocated,
+      usedDays: b.used,
+      remainingDays: remaining,
+      isDeficit: remaining < 0
+    };
   }
 
   public cancelLeaveRequest(id: string): Observable<ApiResponse<string>> {
@@ -3363,6 +3372,552 @@ export class ApiService {
         return of({ success: true, data: pagedData });
       })
     );
+  }
+
+  // ==========================================
+  // COMPLIANCE & AUDIT MANAGEMENT
+  // ==========================================
+
+  private mockCertificates: ComplianceCertificate[] = [
+    {
+      id: 'cert-1',
+      name: 'Quality Management Systems Standard',
+      standardCode: 'ISO 9001:2015',
+      certificateNumber: 'CERT-ISO9001-2024-001',
+      issuingBody: 'BSI Group Global',
+      issueDateUtc: '2024-01-15T00:00:00Z',
+      expiryDateUtc: '2027-01-14T00:00:00Z',
+      status: 'Active',
+      statusName: 'Active',
+      documentUrl: 'https://docs.orbitbusiness.io/certificates/iso-9001.pdf',
+      scopeDescription: 'Design, manufacturing, and operational fulfillment of enterprise hardware and software solutions.',
+      responsibleEmployeeId: 'emp-2',
+      responsibleEmployeeName: 'Sarah Jenkins',
+      daysUntilExpiry: 810,
+      isExpiringSoon: false,
+      isExpired: false,
+      createdAtUtc: '2024-01-15T00:00:00Z'
+    },
+    {
+      id: 'cert-2',
+      name: 'Information Security Management System',
+      standardCode: 'ISO/IEC 27001:2022',
+      certificateNumber: 'CERT-ISO27001-2024-099',
+      issuingBody: 'TÜV SÜD Cert',
+      issueDateUtc: '2023-11-20T00:00:00Z',
+      expiryDateUtc: '2026-11-20T00:00:00Z',
+      status: 'ExpiringSoon',
+      statusName: 'Expiring Soon',
+      documentUrl: 'https://docs.orbitbusiness.io/certificates/iso-27001.pdf',
+      scopeDescription: 'Cloud infrastructure, multi-tenant databases, cryptographic key management, and SaaS application delivery.',
+      responsibleEmployeeId: 'emp-1',
+      responsibleEmployeeName: 'Alex Morgan',
+      daysUntilExpiry: 26,
+      isExpiringSoon: true,
+      isExpired: false,
+      createdAtUtc: '2023-11-20T00:00:00Z'
+    },
+    {
+      id: 'cert-3',
+      name: 'Occupational Health and Safety Standard',
+      standardCode: 'ISO 45001:2018',
+      certificateNumber: 'CERT-ISO45001-2025-044',
+      issuingBody: 'SGS International',
+      issueDateUtc: '2025-05-10T00:00:00Z',
+      expiryDateUtc: '2028-05-09T00:00:00Z',
+      status: 'Active',
+      statusName: 'Active',
+      scopeDescription: 'Warehouse safety, assembly lines, ergonomics, emergency response protocols, and hazardous materials management.',
+      responsibleEmployeeId: 'emp-2',
+      responsibleEmployeeName: 'Sarah Jenkins',
+      daysUntilExpiry: 926,
+      isExpiringSoon: false,
+      isExpired: false,
+      createdAtUtc: '2025-05-10T00:00:00Z'
+    },
+    {
+      id: 'cert-4',
+      name: 'Food Safety & Hygiene Standard (Hotels & Catering)',
+      standardCode: 'HACCP / ISO 22000',
+      certificateNumber: 'CERT-HACCP-2024-888',
+      issuingBody: 'Bureau Veritas',
+      issueDateUtc: '2024-03-01T00:00:00Z',
+      expiryDateUtc: '2026-03-01T00:00:00Z',
+      status: 'Expired',
+      statusName: 'Expired',
+      scopeDescription: 'Hospitality kitchens, banquet prep, cold-chain food storage, and sanitation hygiene verification.',
+      responsibleEmployeeId: 'emp-3',
+      responsibleEmployeeName: 'David Lee',
+      daysUntilExpiry: -238,
+      isExpiringSoon: false,
+      isExpired: true,
+      createdAtUtc: '2024-03-01T00:00:00Z'
+    }
+  ];
+
+  private mockAuditMeetings: AuditMeeting[] = [
+    {
+      id: 'aud-1',
+      meetingNumber: 'AUD-2026-0001',
+      title: 'Annual Information Security Surveillance Audit',
+      auditType: 'External',
+      auditTypeName: 'External',
+      status: 'Scheduled',
+      statusName: 'Scheduled',
+      scheduledDateUtc: '2026-11-10T09:00:00Z',
+      location: 'Conference Room Alpha & Remote Secure Link',
+      leadAuditorEmployeeId: 'emp-1',
+      leadAuditorName: 'Alex Morgan',
+      auditedDepartmentId: 'dp-2',
+      auditedDepartmentName: 'Engineering & Technology',
+      checklistSummary: 'Verify ISO 27001 Annex A controls, backup immutability, vulnerability scans, and access revocation SLAs.',
+      findings: '',
+      nonConformancesCount: 0,
+      createdAtUtc: '2026-10-15T08:00:00Z'
+    },
+    {
+      id: 'aud-2',
+      meetingNumber: 'AUD-2026-0002',
+      title: 'Warehouse Safety & Hazardous Materials Walkthrough',
+      auditType: 'Internal',
+      auditTypeName: 'Internal',
+      status: 'ActionRequired',
+      statusName: 'Action Required',
+      scheduledDateUtc: '2026-10-18T10:00:00Z',
+      location: 'Central Logistics Facility & Loading Docks',
+      leadAuditorEmployeeId: 'emp-2',
+      leadAuditorName: 'Sarah Jenkins',
+      auditedDepartmentId: 'dp-1',
+      auditedDepartmentName: 'Operations & Logistics',
+      checklistSummary: 'OSHA compliance, fire exit clearances, forklift operator training logs, eye-wash stations, and PPE usage.',
+      findings: '2 minor non-conformances: Forklift inspection checklist missed on Oct 14; Fire extinguisher block in aisle 4.',
+      nonConformancesCount: 2,
+      correctiveActionPlan: 'Clear aisle 4 immediately; establish digital daily pre-shift forklift inspection in Orbit Suite.',
+      completedAtUtc: '2026-10-18T14:30:00Z',
+      createdAtUtc: '2026-10-01T09:00:00Z'
+    },
+    {
+      id: 'aud-3',
+      meetingNumber: 'AUD-2026-0003',
+      title: 'Q3 Financial & Accounting Internal Control Review',
+      auditType: 'Internal',
+      auditTypeName: 'Internal',
+      status: 'Completed',
+      statusName: 'Completed',
+      scheduledDateUtc: '2026-10-05T13:00:00Z',
+      location: 'Finance Executive Boardroom',
+      leadAuditorEmployeeId: 'emp-1',
+      leadAuditorName: 'Alex Morgan',
+      auditedDepartmentName: 'Finance & Accounting',
+      checklistSummary: 'Segregation of duties in AP/AR, dual signature limits for payments over $25,000, and payroll ledger reconciliation.',
+      findings: 'All bank reconciliations up to date. Zero critical discrepancies detected.',
+      nonConformancesCount: 0,
+      completedAtUtc: '2026-10-05T16:00:00Z',
+      createdAtUtc: '2026-09-25T11:00:00Z'
+    }
+  ];
+
+  public getComplianceDashboard(): Observable<ApiResponse<ComplianceDashboard>> {
+    return this.http.get<ApiResponse<ComplianceDashboard>>(`${this.baseUrl}/compliance/dashboard`).pipe(
+      catchError(() => {
+        const dashboard: ComplianceDashboard = {
+          totalCertificates: this.mockCertificates.length,
+          activeCertificates: this.mockCertificates.filter(c => c.status === 'Active').length,
+          expiringSoonCertificates: this.mockCertificates.filter(c => c.status === 'ExpiringSoon').length,
+          expiredCertificates: this.mockCertificates.filter(c => c.status === 'Expired').length,
+          totalAuditMeetings: this.mockAuditMeetings.length,
+          scheduledAuditsCount: this.mockAuditMeetings.filter(m => m.status === 'Scheduled').length,
+          actionRequiredAuditsCount: this.mockAuditMeetings.filter(m => m.status === 'ActionRequired').length,
+          completedAuditsCount: this.mockAuditMeetings.filter(m => m.status === 'Completed').length
+        };
+        return of({ success: true, data: dashboard });
+      })
+    );
+  }
+
+  public getCertificates(): Observable<ApiResponse<ComplianceCertificate[]>> {
+    return this.http.get<ApiResponse<ComplianceCertificate[]>>(`${this.baseUrl}/compliance/certificates`).pipe(
+      catchError(() => {
+        return of({ success: true, data: [...this.mockCertificates] });
+      })
+    );
+  }
+
+  public createCertificate(req: CreateCertificateRequest): Observable<ApiResponse<ComplianceCertificate>> {
+    return this.http.post<ApiResponse<ComplianceCertificate>>(`${this.baseUrl}/compliance/certificates`, req).pipe(
+      catchError(() => {
+        const respEmp = this.mockEmployees.find(e => e.id === req.responsibleEmployeeId);
+        const expiry = new Date(req.expiryDateUtc);
+        const days = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        let status: any = 'Active';
+        if (days < 0) status = 'Expired';
+        else if (days <= 30) status = 'ExpiringSoon';
+
+        const cert: ComplianceCertificate = {
+          id: `cert-${Date.now()}`,
+          name: req.name,
+          standardCode: req.standardCode,
+          certificateNumber: req.certificateNumber,
+          issuingBody: req.issuingBody,
+          issueDateUtc: req.issueDateUtc,
+          expiryDateUtc: req.expiryDateUtc,
+          status,
+          statusName: status,
+          documentUrl: req.documentUrl,
+          scopeDescription: req.scopeDescription,
+          responsibleEmployeeId: req.responsibleEmployeeId,
+          responsibleEmployeeName: respEmp?.fullName,
+          daysUntilExpiry: days,
+          isExpiringSoon: status === 'ExpiringSoon',
+          isExpired: status === 'Expired',
+          createdAtUtc: new Date().toISOString()
+        };
+        this.mockCertificates.unshift(cert);
+        return of({ success: true, data: cert, message: 'Certificate created successfully.' });
+      })
+    );
+  }
+
+  public updateCertificate(id: string, req: CreateCertificateRequest): Observable<ApiResponse<ComplianceCertificate>> {
+    return this.http.put<ApiResponse<ComplianceCertificate>>(`${this.baseUrl}/compliance/certificates/${id}`, req).pipe(
+      catchError(() => {
+        const idx = this.mockCertificates.findIndex(c => c.id === id);
+        if (idx !== -1) {
+          const respEmp = this.mockEmployees.find(e => e.id === req.responsibleEmployeeId);
+          const expiry = new Date(req.expiryDateUtc);
+          const days = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          let status: any = 'Active';
+          if (days < 0) status = 'Expired';
+          else if (days <= 30) status = 'ExpiringSoon';
+
+          this.mockCertificates[idx] = {
+            ...this.mockCertificates[idx],
+            name: req.name,
+            standardCode: req.standardCode,
+            certificateNumber: req.certificateNumber,
+            issuingBody: req.issuingBody,
+            issueDateUtc: req.issueDateUtc,
+            expiryDateUtc: req.expiryDateUtc,
+            documentUrl: req.documentUrl,
+            scopeDescription: req.scopeDescription,
+            responsibleEmployeeId: req.responsibleEmployeeId,
+            responsibleEmployeeName: respEmp?.fullName || this.mockCertificates[idx].responsibleEmployeeName,
+            status,
+            statusName: status,
+            daysUntilExpiry: days,
+            isExpiringSoon: status === 'ExpiringSoon',
+            isExpired: status === 'Expired'
+          };
+          return of({ success: true, data: this.mockCertificates[idx], message: 'Certificate updated successfully.' });
+        }
+        return of({ success: false, data: null as any, message: 'Certificate not found.' });
+      })
+    );
+  }
+
+  public deleteCertificate(id: string): Observable<ApiResponse<string>> {
+    return this.http.delete<ApiResponse<string>>(`${this.baseUrl}/compliance/certificates/${id}`).pipe(
+      catchError(() => {
+        this.mockCertificates = this.mockCertificates.filter(c => c.id !== id);
+        return of({ success: true, data: id, message: 'Certificate deleted successfully.' });
+      })
+    );
+  }
+
+  public getAuditMeetings(): Observable<ApiResponse<AuditMeeting[]>> {
+    return this.http.get<ApiResponse<AuditMeeting[]>>(`${this.baseUrl}/compliance/audit-meetings`).pipe(
+      catchError(() => {
+        return of({ success: true, data: [...this.mockAuditMeetings] });
+      })
+    );
+  }
+
+  public createAuditMeeting(req: CreateAuditMeetingRequest): Observable<ApiResponse<AuditMeeting>> {
+    return this.http.post<ApiResponse<AuditMeeting>>(`${this.baseUrl}/compliance/audit-meetings`, req).pipe(
+      catchError(() => {
+        const lead = this.mockEmployees.find(e => e.id === req.leadAuditorEmployeeId);
+        const dept = this.mockDepartments.find(d => d.id === req.auditedDepartmentId);
+        const meetingNum = `AUD-${new Date().getFullYear()}-${String(this.mockAuditMeetings.length + 1).padStart(4, '0')}`;
+
+        const meeting: AuditMeeting = {
+          id: `aud-${Date.now()}`,
+          meetingNumber: meetingNum,
+          title: req.title,
+          auditType: req.auditType,
+          auditTypeName: req.auditType,
+          status: 'Scheduled',
+          statusName: 'Scheduled',
+          scheduledDateUtc: req.scheduledDateUtc,
+          location: req.location,
+          leadAuditorEmployeeId: req.leadAuditorEmployeeId,
+          leadAuditorName: lead?.fullName,
+          auditedDepartmentId: req.auditedDepartmentId,
+          auditedDepartmentName: dept?.name,
+          checklistSummary: req.checklistSummary,
+          nonConformancesCount: 0,
+          createdAtUtc: new Date().toISOString()
+        };
+        this.mockAuditMeetings.unshift(meeting);
+        return of({ success: true, data: meeting, message: 'Audit meeting scheduled successfully.' });
+      })
+    );
+  }
+
+  public updateAuditMeeting(id: string, req: Partial<AuditMeeting>): Observable<ApiResponse<AuditMeeting>> {
+    return this.http.put<ApiResponse<AuditMeeting>>(`${this.baseUrl}/compliance/audit-meetings/${id}`, req).pipe(
+      catchError(() => {
+        const idx = this.mockAuditMeetings.findIndex(m => m.id === id);
+        if (idx !== -1) {
+          this.mockAuditMeetings[idx] = {
+            ...this.mockAuditMeetings[idx],
+            ...req,
+            statusName: req.status || this.mockAuditMeetings[idx].statusName
+          };
+          return of({ success: true, data: this.mockAuditMeetings[idx], message: 'Audit meeting updated successfully.' });
+        }
+        return of({ success: false, data: null as any, message: 'Audit meeting not found.' });
+      })
+    );
+  }
+
+  // ==========================================
+  // PAYROLL & COMPENSATION MANAGEMENT
+  // ==========================================
+
+  private mockPayrollRecords: PayrollRecord[] = [
+    {
+      id: 'pay-muhammad',
+      tenantId: 'kazareen-tenant-id-001',
+      payrollNumber: 'PAY-2026-10-0004',
+      employeeId: 'emp-it',
+      employeeNumber: 'EMP-004',
+      employeeName: 'Muhammad Alkhadraa',
+      departmentName: 'Information Technology',
+      jobTitle: 'Senior IT Systems Engineer',
+      email: 'alkhadraam@gmail.com',
+      year: 2026,
+      month: 10,
+      payPeriod: 'October 2026',
+      baseSalary: 7500,
+      hourlyRate: 42.61,
+      overtimeHours: 12,
+      overtimeRate: 50.00,
+      overtimePay: 600.00,
+      bonuses: 250.00,
+      grossPay: 8350.00,
+      daysInMonth: 31,
+      workingDaysExpected: 22,
+      daysPresent: 22,
+      daysAbsent: 0,
+      absenceDeduction: 0,
+      lateOccurrences: 0,
+      latePenaltyDeduction: 0,
+      negativeVacationDays: 0,
+      vacationDeficitDeduction: 0,
+      taxRatePercentage: 12.0,
+      taxDeduction: 1002.00,
+      socialSecurityDeduction: 375.00,
+      totalDeductions: 1377.00,
+      netPay: 6973.00,
+      status: 'Approved',
+      statusName: 'Approved',
+      approvedAtUtc: '2026-10-25T14:00:00Z',
+      isEmailedToEmployee: false,
+      emailedAtUtc: undefined,
+      notes: 'Monthly salary calculated by Abdelrazik (Accounting) and approved for HR distribution.',
+      createdAtUtc: '2026-10-25T12:00:00Z'
+    },
+    {
+      id: 'pay-1',
+      tenantId: '11111111-2222-3333-4444-555555555555',
+      payrollNumber: 'PAY-2026-10-0001',
+      employeeId: 'emp-1',
+      employeeNumber: 'EMP-001',
+      employeeName: 'Alex Morgan',
+      departmentName: 'Operations & Logistics',
+      jobTitle: 'Founder & CEO',
+      email: 'alex.morgan@orbitbusiness.io',
+      year: 2026,
+      month: 10,
+      payPeriod: 'October 2026',
+      baseSalary: 14000,
+      hourlyRate: 79.55,
+      overtimeHours: 0,
+      overtimeRate: 119.32,
+      overtimePay: 0,
+      bonuses: 2000,
+      grossPay: 16000,
+      daysInMonth: 31,
+      workingDaysExpected: 22,
+      daysPresent: 22,
+      daysAbsent: 0,
+      absenceDeduction: 0,
+      lateOccurrences: 0,
+      latePenaltyDeduction: 0,
+      negativeVacationDays: 0,
+      vacationDeficitDeduction: 0,
+      taxRatePercentage: 15.0,
+      taxDeduction: 2400,
+      socialSecurityDeduction: 700,
+      totalDeductions: 3100,
+      netPay: 12900,
+      status: 'Approved',
+      statusName: 'Approved',
+      approvedAtUtc: '2026-10-24T18:00:00Z',
+      isEmailedToEmployee: true,
+      emailedAtUtc: '2026-10-24T18:30:00Z',
+      notes: 'Executive Q3 bonus added to gross pay.',
+      createdAtUtc: '2026-10-24T10:00:00Z'
+    },
+    {
+      id: 'pay-2',
+      tenantId: '11111111-2222-3333-4444-555555555555',
+      payrollNumber: 'PAY-2026-10-0002',
+      employeeId: 'emp-2',
+      employeeNumber: 'EMP-002',
+      employeeName: 'Sarah Jenkins',
+      departmentName: 'Operations & Logistics',
+      jobTitle: 'Director of Operations',
+      email: 'sarah.jenkins@orbitbusiness.io',
+      year: 2026,
+      month: 10,
+      payPeriod: 'October 2026',
+      baseSalary: 9500,
+      hourlyRate: 53.98,
+      overtimeHours: 10,
+      overtimeRate: 80.97,
+      overtimePay: 809.70,
+      bonuses: 500,
+      grossPay: 10809.70,
+      daysInMonth: 31,
+      workingDaysExpected: 22,
+      daysPresent: 22,
+      daysAbsent: 0,
+      absenceDeduction: 0,
+      lateOccurrences: 1,
+      latePenaltyDeduction: 107.95,
+      negativeVacationDays: 0,
+      vacationDeficitDeduction: 0,
+      taxRatePercentage: 15.0,
+      taxDeduction: 1605.26,
+      socialSecurityDeduction: 475.00,
+      totalDeductions: 2188.21,
+      netPay: 8621.49,
+      status: 'Approved',
+      statusName: 'Approved',
+      approvedAtUtc: '2026-10-24T18:00:00Z',
+      isEmailedToEmployee: true,
+      emailedAtUtc: '2026-10-24T18:30:00Z',
+      notes: 'Includes 10 hours peak fulfillment shift supervision.',
+      createdAtUtc: '2026-10-24T10:00:00Z'
+    },
+    {
+      id: 'pay-3',
+      tenantId: '11111111-2222-3333-4444-555555555555',
+      payrollNumber: 'PAY-2026-10-0003',
+      employeeId: 'emp-3',
+      employeeNumber: 'EMP-003',
+      employeeName: 'David Lee',
+      departmentName: 'Operations & Logistics',
+      jobTitle: 'Logistics Coordinator',
+      email: 'david.lee@orbitbusiness.io',
+      year: 2026,
+      month: 10,
+      payPeriod: 'October 2026',
+      baseSalary: 6800,
+      hourlyRate: 38.64,
+      overtimeHours: 6,
+      overtimeRate: 57.95,
+      overtimePay: 347.70,
+      bonuses: 0,
+      grossPay: 7147.70,
+      daysInMonth: 31,
+      workingDaysExpected: 22,
+      daysPresent: 20,
+      daysAbsent: 0,
+      absenceDeduction: 0,
+      lateOccurrences: 0,
+      latePenaltyDeduction: 0,
+      negativeVacationDays: 2.0,
+      vacationDeficitDeduction: 618.18,
+      taxRatePercentage: 15.0,
+      taxDeduction: 979.43,
+      socialSecurityDeduction: 340.00,
+      totalDeductions: 1937.61,
+      netPay: 5210.09,
+      status: 'Approved',
+      statusName: 'Approved',
+      approvedAtUtc: '2026-10-24T18:00:00Z',
+      isEmailedToEmployee: true,
+      emailedAtUtc: '2026-10-24T18:30:00Z',
+      notes: 'Includes deduction of 2.0 deficit vacation days below 0-day baseline as per company leave policy.',
+      createdAtUtc: '2026-10-24T10:00:00Z'
+    }
+  ];
+
+  public getPayrollRecords(year?: number, month?: number, employeeId?: string): Observable<ApiResponse<PayrollRecord[]>> {
+    let url = `${this.baseUrl}/payroll?`;
+    if (year) url += `year=${year}&`;
+    if (month) url += `month=${month}&`;
+    if (employeeId) url += `employeeId=${employeeId}&`;
+
+    return this.http.get<ApiResponse<PayrollRecord[]>>(url);
+  }
+
+  public getPayrollRecordById(id: string): Observable<ApiResponse<PayrollRecord>> {
+    return this.http.get<ApiResponse<PayrollRecord>>(`${this.baseUrl}/payroll/${id}`);
+  }
+
+  public getPayrollSummary(year?: number, month?: number): Observable<ApiResponse<PayrollSummary>> {
+    const y = year || 2026;
+    const m = month || 10;
+    return this.http.get<ApiResponse<PayrollSummary>>(`${this.baseUrl}/payroll/summary?year=${y}&month=${m}`);
+  }
+
+  public generatePayrollBatch(req: GeneratePayrollBatchRequest): Observable<ApiResponse<PayrollRecord[]>> {
+    return this.http.post<ApiResponse<PayrollRecord[]>>(`${this.baseUrl}/payroll/generate`, req);
+  }
+
+  public approvePayrollBatch(req: ApprovePayrollBatchRequest): Observable<ApiResponse<PayrollRecord[]>> {
+    return this.http.post<ApiResponse<PayrollRecord[]>>(`${this.baseUrl}/payroll/approve`, req);
+  }
+
+  public getEmployeePayslipSpreadsheet(payrollId: string): Observable<ApiResponse<EmployeePayslipSpreadsheet>> {
+    return this.http.get<ApiResponse<EmployeePayslipSpreadsheet>>(`${this.baseUrl}/payroll/${payrollId}/spreadsheet-data`);
+  }
+
+  public getMasterPayrollSpreadsheet(year?: number, month?: number): Observable<ApiResponse<EmployeePayslipSpreadsheet>> {
+    const y = year || 2026;
+    const m = month || 10;
+    return this.http.get<ApiResponse<EmployeePayslipSpreadsheet>>(`${this.baseUrl}/payroll/master-spreadsheet?year=${y}&month=${m}`);
+  }
+
+  public initiatePayroll(req: InitiatePayrollRequest): Observable<ApiResponse<PayrollRecord>> {
+    return this.http.post<ApiResponse<PayrollRecord>>(`${this.baseUrl}/payroll/initiate`, req);
+  }
+
+  public submitHrSheet(payrollId: string, req: SubmitHrSheetRequest): Observable<ApiResponse<PayrollRecord>> {
+    return this.http.post<ApiResponse<PayrollRecord>>(`${this.baseUrl}/payroll/${payrollId}/hr-sheet`, req);
+  }
+
+  public finalizePayrollToHr(payrollId: string): Observable<ApiResponse<PayrollRecord>> {
+    return this.http.post<ApiResponse<PayrollRecord>>(`${this.baseUrl}/payroll/${payrollId}/finalize-to-hr`, {});
+  }
+
+  public sendEmployeePayslipEmail(payrollId: string): Observable<ApiResponse<SendEmailResult>> {
+    return this.http.post<ApiResponse<SendEmailResult>>(`${this.baseUrl}/payroll/${payrollId}/email`, {});
+  }
+
+  public sendAllPayslipsBatchEmail(year?: number, month?: number): Observable<ApiResponse<SendEmailResult[]>> {
+    const y = year || 2026;
+    const m = month || 10;
+    return this.http.post<ApiResponse<SendEmailResult[]>>(`${this.baseUrl}/payroll/email-batch?year=${y}&month=${m}`, {});
+  }
+
+  public getEmployeeSalaryProfile(employeeId: string, year?: number, month?: number): Observable<ApiResponse<EmployeeSalaryProfile>> {
+    const y = year || 2026;
+    const m = month || 10;
+    return this.http.get<ApiResponse<EmployeeSalaryProfile>>(`${this.baseUrl}/hr/employee-profile/${employeeId}?year=${y}&month=${m}`);
   }
 }
 

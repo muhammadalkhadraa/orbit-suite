@@ -24,6 +24,11 @@ This document tracks the execution phases, current progress, dependencies, and v
 | **Phase 13** | Reports & Executive Analytics Dashboard | **Complete** | Verified |
 | **Phase 14** | Integration & Release Readiness | **Complete** | 58/58 Tests Passed & 0-Error Build |
 | **Phase 15** | Containerization, CI/CD & Audit Governance | **Complete** | 60/60 Tests Passed & Docker Orchestration |
+| **Phase 16** | Multi-Industry Starter Pack & 8 Core Departments | **Planned** | Pending Execution |
+| **Phase 17** | Compliance Audit & Regulatory Certificates | **Planned** | Pending Execution |
+| **Phase 18** | Scoped Vacation Approvals & Negative Balance Engine | **Planned** | Pending Execution |
+| **Phase 19** | Internal IT Support Helpdesk | **Planned** | Pending Execution |
+| **Phase 20** | Finance Salary Calc, Excel Payroll & HR Email Dispatch | **Planned** | Pending Execution |
 
 ---
 
@@ -160,4 +165,55 @@ This document tracks the execution phases, current progress, dependencies, and v
   - Registered route `/app/audit` and added navigation entry under *Security & Governance* in workspace shell.
 - [x] Updated `README.md` and `docs/DEPLOYMENT.md` with containerized execution commands and operational playbooks.
 
+### Phase 16: Multi-Industry Starter Pack & 8 Core Departments
+- [ ] Pre-configure auto-provisioning for the 8 core operational departments across all industries (Hotels, Manufacturing, Retail, Corporate):
+  1. HR (Human Resources)
+  2. Finance & Accounting
+  3. Customer Service
+  4. IT (Information Technology)
+  5. Sales & Commercial
+  6. Stores & Warehouses
+  7. Data Entry & Operations
+  8. Compliance & Audit
+- [ ] Seed standard industry role mappings and reporting lines.
 
+### Phase 17: Compliance & Audit Governance Engine
+- [ ] Implement `ComplianceCertificate` entity:
+  - Certificate Name, Standard (ISO 9001, ISO 27001, HACCP, OSHA, Fire Safety, Health/Food License).
+  - Issuing authority, Certificate Number, Issue Date, Expiration Date.
+  - Status state machine (`Active`, `ExpiringSoon`, `Expired`, `UnderRenewal`).
+  - Document attachment/link and renewal alerting.
+- [ ] Implement `AuditMeeting` entity:
+  - Title, Audit Type (`Internal`, `External`), Scheduled Date & Time, Location/Branch.
+  - Lead Auditor (from Compliance Department), Target Department, Checklist, Non-Conformance findings, Corrective Action plans.
+- [ ] REST API endpoints under `/api/v1/compliance` and frontend UI view `/app/compliance`.
+
+### Phase 18: Scoped Vacation Approval & Negative Balance Engine
+- [ ] Add `VacationDaysAllocated` (default 21) and `VacationDaysUsed` to `EmployeeProfile`.
+- [ ] Implement live Vacation Days Balance Counter calculation (`Allocated - Approved Days`).
+- [ ] Implement negative number counter behavior:
+  - When approved days exceed available balance, count down below 0 into negative numbers (e.g. `-1`, `-2`, `-3`), representing deficit / unpaid vacation balance.
+- [ ] Enforce strict managerial scoping:
+  - Vacation requests visible strictly to the employee's direct supervisor (`ReportsToEmployeeId` or Department Manager) and executive admins.
+  - Only the designated Department Manager has approval/rejection authority for that department.
+- [ ] Automated HR Forwarding & Ledger Sync:
+  - Every approved vacation request automatically synchronizes with the HR Department roster and flags deficit days for payroll deduction.
+
+### Phase 19: Internal IT Support Helpdesk
+- [ ] Extend ticketing to support Internal IT requests:
+  - Ticket categories: Hardware/Workstation, Software/Bug, Network/Wi-Fi, Email/Account Access, ERP System.
+  - Direct employee submission with automatic IT Department queue routing.
+  - Internal resolution comments and SLA tracking.
+
+### Phase 20: Finance Salary Calculation, Excel Payroll Engine & HR Email Dispatch
+- [ ] Add compensation contract attributes to `EmployeeProfile` (Base salary, hourly rate, overtime rate, tax/insurance parameters).
+- [ ] Implement `PayrollService`:
+  - Calculate gross pay, absence deductions, late penalties, and unpaid negative vacation days.
+  - Calculate overtime additions and net salary payable.
+- [ ] Implement Excel (`.xlsx` / CSV) spreadsheet export engine:
+  - Individual itemized employee payslip spreadsheets.
+  - Consolidated company payroll master ledger.
+- [ ] Implement HR Review Dashboard and `IEmailService`:
+  - HR review and approval queue.
+  - One-click "Send Payslips via Email" dispatching individual Excel sheets to employees' email addresses.
+  - Full audit logging in `AuditLog` table.

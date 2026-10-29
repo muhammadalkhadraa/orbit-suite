@@ -724,8 +724,8 @@ export class AuditComponent implements OnInit {
   public currentPage = 1;
   public pageSize = 15;
 
-  public searchQuery = '';
-  public selectedUserEmail = '';
+  public searchQuery: string = '';
+  public selectedUserEmail: string = '';
   public selectedEntity = 'All';
   public selectedAction = 'All';
 

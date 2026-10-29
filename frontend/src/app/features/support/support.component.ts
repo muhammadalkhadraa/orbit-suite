@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
-import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriority, TicketCategory, Customer, Employee } from '../../core/models/models';
+import { SupportTicket, TicketComment, TicketMetrics, TicketStatus, TicketPriority, TicketCategory, Customer, Employee, Department } from '../../core/models/models';
 
 export interface TicketAttachment {
   id: string;
@@ -135,6 +135,12 @@ export interface TicketAttachment {
         </div>
 
         <div class="filter-group">
+          <select [(ngModel)]="selectedDesk" (change)="applyFilters()" class="filter-select font-bold">
+            <option value="ALL">🏢 All Incidents & Tickets</option>
+            <option value="CUSTOMER">👥 External Customer Support</option>
+            <option value="INTERNAL_IT">💻 Internal IT Helpdesk</option>
+          </select>
+
           <select [(ngModel)]="selectedPriority" (change)="applyFilters()" class="filter-select">
             <option value="ALL">All Priorities</option>
             <option value="Urgent">Urgent</option>
@@ -150,6 +156,10 @@ export interface TicketAttachment {
             <option value="Product">Product</option>
             <option value="Account">Account</option>
             <option value="General">General</option>
+            <option value="Hardware">IT Hardware Support</option>
+            <option value="Software">IT Software & Apps</option>
+            <option value="NetworkAccess">IT Network & VPN</option>
+            <option value="ErpSystem">IT ERP & Platform</option>
           </select>
         </div>
 
@@ -244,12 +254,16 @@ export interface TicketAttachment {
                 </div>
               </td>
               <td>
-                <div class="customer-cell font-body">
+                <div *ngIf="!t.isInternalItTicket" class="customer-cell font-body">
                   🏢 {{ t.customerName }}
+                </div>
+                <div *ngIf="t.isInternalItTicket" class="customer-cell font-body">
+                  <span class="badge badge-cyan" style="font-size: 0.7rem; margin-bottom: 2px;">💻 Internal IT Desk</span>
+                  <div class="font-caption text-secondary">Req: {{ t.requestingEmployeeName || 'Internal Staff' }}</div>
                 </div>
               </td>
               <td>
-                <span class="category-tag">{{ t.category }}</span>
+                <span class="category-tag" [class.badge-indigo]="t.isInternalItTicket">{{ t.category }}</span>
               </td>
               <td>
                 <span class="badge" [ngClass]="getPriorityBadge(t.priority)">
@@ -462,12 +476,31 @@ export interface TicketAttachment {
           </div>
 
           <div class="modal-body">
-            <div class="form-group">
-              <label>Incident Subject *</label>
-              <input type="text" [(ngModel)]="createSubject" placeholder="Brief summary of the issue" />
+            <div class="ticket-type-toggle" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <button
+                type="button"
+                (click)="setTicketType(false)"
+                class="btn-sm"
+                [ngClass]="!createIsInternalIt ? 'btn-primary' : 'btn-secondary'"
+                style="flex: 1; padding: 0.5rem 1rem;">
+                🏢 External Customer Incident
+              </button>
+              <button
+                type="button"
+                (click)="setTicketType(true)"
+                class="btn-sm"
+                [ngClass]="createIsInternalIt ? 'btn-primary' : 'btn-secondary'"
+                style="flex: 1; padding: 0.5rem 1rem;">
+                💻 Internal IT Helpdesk Request
+              </button>
             </div>
 
-            <div class="form-row">
+            <div class="form-group">
+              <label>{{ createIsInternalIt ? 'IT Request Title / Issue *' : 'Incident Subject *' }}</label>
+              <input type="text" [(ngModel)]="createSubject" [placeholder]="createIsInternalIt ? 'e.g. Laptop battery replacement or VPN authentication error' : 'Brief summary of the issue'" />
+            </div>
+
+            <div *ngIf="!createIsInternalIt" class="form-row">
               <div class="form-group">
                 <label>Affected Client Account *</label>
                 <select [(ngModel)]="createCustomerId">
@@ -485,15 +518,37 @@ export interface TicketAttachment {
               </div>
             </div>
 
+            <div *ngIf="createIsInternalIt" class="form-row">
+              <div class="form-group">
+                <label>Requesting Employee *</label>
+                <select [(ngModel)]="createRequestingEmployeeId">
+                  <option value="">-- Select Requesting Employee --</option>
+                  <option *ngFor="let emp of employees" [value]="emp.id">{{ emp.fullName }} ({{ emp.departmentName || 'Staff' }})</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Target Department</label>
+                <select [(ngModel)]="createTargetDepartmentId">
+                  <option value="">Information Technology (Default)</option>
+                  <option *ngFor="let d of departments" [value]="d.id">{{ d.name }}</option>
+                </select>
+              </div>
+            </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Category</label>
                 <select [(ngModel)]="createCategory">
-                  <option value="Technical">Technical</option>
-                  <option value="Billing">Billing</option>
-                  <option value="Product">Product</option>
-                  <option value="Account">Account</option>
-                  <option value="General">General</option>
+                  <option *ngIf="createIsInternalIt" value="Hardware">IT Hardware (Laptops, Monitors, Peripherals)</option>
+                  <option *ngIf="createIsInternalIt" value="Software">IT Software (OS, Dev Tools, Productivity)</option>
+                  <option *ngIf="createIsInternalIt" value="NetworkAccess">IT Network, WiFi & Corporate VPN</option>
+                  <option *ngIf="createIsInternalIt" value="ErpSystem">Orbit ERP & Internal Systems</option>
+                  <option *ngIf="!createIsInternalIt" value="Technical">Technical</option>
+                  <option *ngIf="!createIsInternalIt" value="Billing">Billing</option>
+                  <option *ngIf="!createIsInternalIt" value="Product">Product</option>
+                  <option *ngIf="!createIsInternalIt" value="Account">Account</option>
+                  <option *ngIf="!createIsInternalIt" value="General">General</option>
                 </select>
               </div>
 
@@ -1246,11 +1301,13 @@ export class SupportComponent implements OnInit {
   public ticketMetrics: TicketMetrics | null = null;
   public customers: Customer[] = [];
   public employees: Employee[] = [];
+  public departments: Department[] = [];
 
   public searchQuery = '';
   public selectedTab = 'ALL';
   public selectedPriority = 'ALL';
   public selectedCategory = 'ALL';
+  public selectedDesk: 'ALL' | 'CUSTOMER' | 'INTERNAL_IT' = 'ALL';
 
   // Detail Modal
   public showDetailModal = false;
@@ -1262,9 +1319,12 @@ export class SupportComponent implements OnInit {
 
   // Create Modal
   public showCreateModal = false;
+  public createIsInternalIt = false;
   public createSubject = '';
   public createDescription = '';
   public createCustomerId = '';
+  public createRequestingEmployeeId = '';
+  public createTargetDepartmentId = '';
   public createAssignedEmployeeId = '';
   public createCategory: TicketCategory = 'Technical';
   public createPriority: TicketPriority = 'Medium';
@@ -1285,6 +1345,9 @@ export class SupportComponent implements OnInit {
     });
     this.apiService.getEmployees().subscribe(res => {
       if (res.data) this.employees = res.data.data;
+    });
+    this.apiService.getDepartments().subscribe(res => {
+      if (res.data) this.departments = res.data;
     });
   }
 
@@ -1308,6 +1371,12 @@ export class SupportComponent implements OnInit {
   public applyFilters(): void {
     let result = [...this.tickets];
 
+    if (this.selectedDesk === 'CUSTOMER') {
+      result = result.filter(t => !t.isInternalItTicket);
+    } else if (this.selectedDesk === 'INTERNAL_IT') {
+      result = result.filter(t => t.isInternalItTicket);
+    }
+
     if (this.selectedTab !== 'ALL') {
       result = result.filter(t => t.status === this.selectedTab);
     }
@@ -1325,7 +1394,8 @@ export class SupportComponent implements OnInit {
       result = result.filter(t =>
         t.ticketNumber.toLowerCase().includes(q) ||
         t.subject.toLowerCase().includes(q) ||
-        t.customerName.toLowerCase().includes(q)
+        (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+        (t.requestingEmployeeName && t.requestingEmployeeName.toLowerCase().includes(q))
       );
     }
 
@@ -1355,10 +1425,28 @@ export class SupportComponent implements OnInit {
     this.selectedTicket = null;
   }
 
+  public setTicketType(isInternal: boolean): void {
+    this.createIsInternalIt = isInternal;
+    if (isInternal) {
+      this.createCategory = 'Hardware';
+      if (this.employees.length > 0 && !this.createRequestingEmployeeId) {
+        this.createRequestingEmployeeId = this.employees[0].id;
+      }
+    } else {
+      this.createCategory = 'Technical';
+      if (this.customers.length > 0 && !this.createCustomerId) {
+        this.createCustomerId = this.customers[0].id;
+      }
+    }
+  }
+
   public openCreateModal(): void {
+    this.createIsInternalIt = false;
     this.createSubject = '';
     this.createDescription = '';
     this.createCustomerId = this.customers.length > 0 ? this.customers[0].id : '';
+    this.createRequestingEmployeeId = this.employees.length > 0 ? this.employees[0].id : '';
+    this.createTargetDepartmentId = '';
     this.createAssignedEmployeeId = '';
     this.createCategory = 'Technical';
     this.createPriority = 'Medium';
@@ -1372,7 +1460,8 @@ export class SupportComponent implements OnInit {
   }
 
   public submitCreateTicket(): void {
-    if (!this.createSubject.trim() || !this.createCustomerId || !this.createDescription.trim()) return;
+    if (!this.createSubject.trim() || !this.createDescription.trim()) return;
+    if (!this.createIsInternalIt && !this.createCustomerId) return;
 
     let finalDescription = this.createDescription.trim();
     if (this.createAttachments.length > 0) {
@@ -1383,7 +1472,10 @@ export class SupportComponent implements OnInit {
     this.apiService.createTicket({
       subject: this.createSubject.trim(),
       description: finalDescription,
-      customerId: this.createCustomerId,
+      customerId: this.createIsInternalIt ? undefined : this.createCustomerId,
+      isInternalItTicket: this.createIsInternalIt,
+      requestingEmployeeId: this.createIsInternalIt ? (this.createRequestingEmployeeId || undefined) : undefined,
+      targetDepartmentId: this.createIsInternalIt ? (this.createTargetDepartmentId || undefined) : undefined,
       assignedEmployeeId: this.createAssignedEmployeeId || undefined,
       category: this.createCategory,
       priority: this.createPriority
@@ -1391,7 +1483,10 @@ export class SupportComponent implements OnInit {
       this.closeCreateModal();
       this.loadTickets();
       this.loadMetrics();
-      this.toastService.success('Support Ticket Opened', 'Incident registered with attached telemetry.');
+      this.toastService.success(
+        this.createIsInternalIt ? 'Internal IT Ticket Opened' : 'Support Ticket Opened',
+        'Incident registered with attached telemetry.'
+      );
     });
   }
 

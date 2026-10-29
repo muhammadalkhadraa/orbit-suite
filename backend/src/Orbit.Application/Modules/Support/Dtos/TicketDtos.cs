@@ -12,8 +12,15 @@ public class SupportTicketDto
     public string Subject { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
-    public Guid CustomerId { get; set; }
-    public string CustomerName { get; set; } = string.Empty;
+    public bool IsInternalItTicket { get; set; }
+    public Guid? CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+
+    public Guid? RequestingEmployeeId { get; set; }
+    public string? RequestingEmployeeName { get; set; }
+
+    public Guid? TargetDepartmentId { get; set; }
+    public string? TargetDepartmentName { get; set; }
 
     public Guid? AssignedEmployeeId { get; set; }
     public string? AssignedEmployeeName { get; set; }
@@ -56,7 +63,10 @@ public class CreateTicketRequest
 {
     public string Subject { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public Guid CustomerId { get; set; }
+    public bool IsInternalItTicket { get; set; } = false;
+    public Guid? CustomerId { get; set; }
+    public Guid? RequestingEmployeeId { get; set; }
+    public Guid? TargetDepartmentId { get; set; }
     public Guid? AssignedEmployeeId { get; set; }
     public TicketPriority Priority { get; set; } = TicketPriority.Medium;
     public TicketCategory Category { get; set; } = TicketCategory.Technical;
@@ -66,7 +76,10 @@ public class UpdateTicketRequest
 {
     public string Subject { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public Guid CustomerId { get; set; }
+    public bool IsInternalItTicket { get; set; } = false;
+    public Guid? CustomerId { get; set; }
+    public Guid? RequestingEmployeeId { get; set; }
+    public Guid? TargetDepartmentId { get; set; }
     public Guid? AssignedEmployeeId { get; set; }
     public TicketPriority Priority { get; set; }
     public TicketCategory Category { get; set; }
@@ -93,7 +106,10 @@ public class TicketFilterRequest
     public TicketStatus? Status { get; set; }
     public TicketPriority? Priority { get; set; }
     public TicketCategory? Category { get; set; }
+    public bool? IsInternalItTicket { get; set; }
     public Guid? CustomerId { get; set; }
+    public Guid? RequestingEmployeeId { get; set; }
+    public Guid? TargetDepartmentId { get; set; }
     public Guid? AssignedEmployeeId { get; set; }
     public string? Search { get; set; }
 }

@@ -5,6 +5,8 @@ export interface UserProfile {
   email: string;
   fullName: string;
   role?: TenantRole;
+  departmentCode?: string; // 'HR', 'FIN', 'IT', etc.
+  departmentName?: string;
 }
 
 export interface TenantSummary {
@@ -88,7 +90,7 @@ export interface Department {
 
 export interface Employee {
   id: string;
-  tenantId: string;
+  tenantId?: string;
   userId?: string;
   employeeNumber: string;
   firstName: string;
@@ -105,6 +107,20 @@ export interface Employee {
   reportsToName?: string;
   isActive: boolean;
   hireDateUtc?: string;
+  baseSalary?: number;
+  baseMonthlySalary?: number;
+  dailyRate?: number;
+  hourlyRate?: number;
+  overtimeRate?: number;
+  contractType?: string;
+  contractStartDateUtc?: string;
+  contractEndDateUtc?: string;
+  contractNotes?: string;
+  vacationDaysAllocated?: number;
+  vacationDaysUsed?: number;
+  vacationDaysRemaining?: number;
+  createLoginAccount?: boolean;
+  initialPassword?: string;
 }
 
 export type TaskStatus = 'Todo' | 'InProgress' | 'InReview' | 'Done';
@@ -228,7 +244,7 @@ export interface DealMetrics {
 
 export type TicketStatus = 'Open' | 'Pending' | 'Resolved' | 'Closed';
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
-export type TicketCategory = 'Technical' | 'Billing' | 'Product' | 'Account' | 'General';
+export type TicketCategory = 'Technical' | 'Billing' | 'Product' | 'Account' | 'General' | 'Hardware' | 'Software' | 'NetworkAccess' | 'ErpSystem';
 
 export interface TicketComment {
   id: string;
@@ -246,8 +262,13 @@ export interface SupportTicket {
   ticketNumber: string;
   subject: string;
   description: string;
-  customerId: string;
-  customerName: string;
+  customerId?: string;
+  customerName?: string;
+  isInternalItTicket?: boolean;
+  requestingEmployeeId?: string;
+  requestingEmployeeName?: string;
+  targetDepartmentId?: string;
+  targetDepartmentName?: string;
   assignedEmployeeId?: string;
   assignedEmployeeName?: string;
   createdByEmployeeId?: string;
@@ -270,7 +291,10 @@ export interface SupportTicket {
 export interface CreateTicketRequest {
   subject: string;
   description: string;
-  customerId: string;
+  customerId?: string;
+  isInternalItTicket?: boolean;
+  requestingEmployeeId?: string;
+  targetDepartmentId?: string;
   assignedEmployeeId?: string;
   priority: TicketPriority;
   category: TicketCategory;
@@ -279,7 +303,10 @@ export interface CreateTicketRequest {
 export interface UpdateTicketRequest {
   subject: string;
   description: string;
-  customerId: string;
+  customerId?: string;
+  isInternalItTicket?: boolean;
+  requestingEmployeeId?: string;
+  targetDepartmentId?: string;
   assignedEmployeeId?: string;
   priority: TicketPriority;
   category: TicketCategory;
@@ -686,7 +713,25 @@ export interface LeaveRequest {
   approverEmployeeName?: string;
   actionedAtUtc?: string;
   rejectionReason?: string;
+  remainingBalanceAtRequest?: number;
+  resultingBalanceAfterApproval?: number;
+  isForwardedToHr?: boolean;
+  forwardedToHrAtUtc?: string;
+  currentEmployeeBalance?: number;
+  employeeAllocatedDays?: number;
+  employeeUsedDays?: number;
   createdAtUtc: string;
+}
+
+export interface EmployeeVacationBalance {
+  employeeId: string;
+  employeeName: string;
+  employeeNumber: string;
+  departmentName: string;
+  allocatedDays: number;
+  usedDays: number;
+  remainingDays: number;
+  isDeficit: boolean;
 }
 
 export interface CreateLeaveRequestRequest {
@@ -949,5 +994,355 @@ export interface AuditLogFilter {
   toDateUtc?: string;
   pageNumber?: number;
   pageSize?: number;
+}
+
+// ==========================================
+// SECTION 15: Activity & Time Tracking
+// ==========================================
+
+export type ActivityState = 'NotStarted' | 'Working' | 'OnBreak' | 'Closed' | 'Idle';
+
+export interface ActivityActionRequest {
+  employeeCode: string;
+  password?: string;
+  action: 'Start' | 'Break' | 'Resume' | 'End' | 'pause-idle' | 'resume-idle' | string;
+  clientLocalHour?: number;
+  clientLocalMinute?: number;
+  notes?: string;
+}
+
+export interface UserActivityStatusDto {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  departmentName: string;
+  jobTitle: string;
+  date: string;
+  state: ActivityState;
+  workStartedAtUtc?: string;
+  workEndedAtUtc?: string;
+  currentBreakStartedAtUtc?: string;
+  lastWorkResumedAtUtc?: string;
+  totalWorkSeconds: number;
+  totalBreakSeconds: number;
+  currentWorkSeconds: number;
+  currentBreakSeconds: number;
+  isLate: boolean;
+  lateMinutes: number;
+  faultsCount: number;
+  faultReason?: string;
+  breakSecondsRemaining: number;
+  hasExceededBreak: boolean;
+  serverTimeUtc: string;
+}
+
+export interface LiveEmployeeActivityDto {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  email: string;
+  departmentName: string;
+  jobTitle: string;
+  branchName: string;
+  date: string;
+  state: ActivityState;
+  workStartedAtUtc?: string;
+  workEndedAtUtc?: string;
+  currentBreakStartedAtUtc?: string;
+  totalWorkSeconds: number;
+  totalBreakSeconds: number;
+  currentWorkSeconds: number;
+  currentBreakSeconds: number;
+  isLate: boolean;
+  lateMinutes: number;
+  faultsCount: number;
+  faultReason?: string;
+  breakExceeded: boolean;
+  breakRemainingSeconds: number;
+}
+
+export interface LiveMonitorResponse {
+  totalEmployees: number;
+  workingCount: number;
+  idleCount?: number;
+  onBreakCount: number;
+  closedCount: number;
+  notStartedCount: number;
+  lateTodayCount: number;
+  faultsTodayCount: number;
+  employees: LiveEmployeeActivityDto[];
+  serverTimeUtc: string;
+}
+
+export interface ActivityReportFilter {
+  dateFrom?: string;
+  dateTo?: string;
+  departmentId?: string;
+  employeeId?: string;
+  state?: ActivityState;
+  lateOnly?: boolean;
+  faultsOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ActivityReportResponse {
+  totalRecords: number;
+  totalWorkHours: number;
+  totalBreakHours: number;
+  totalLateCount: number;
+  totalFaultsCount: number;
+  averageWorkHoursPerDay: number;
+  records: LiveEmployeeActivityDto[];
+  page: number;
+  pageSize: number;
+}
+
+// ==========================================
+// 14. COMPLIANCE & AUDIT GOVERNANCE
+// ==========================================
+export type CertificateStatus = 'Active' | 'ExpiringSoon' | 'Expired' | 'UnderRenewal';
+export type AuditMeetingType = 'Internal' | 'External' | 'Surveillance' | 'Regulatory';
+export type AuditMeetingStatus = 'Scheduled' | 'InProgress' | 'Completed' | 'ActionRequired' | 'Cancelled';
+
+export interface ComplianceCertificate {
+  id: string;
+  name: string;
+  standardCode: string;
+  certificateNumber: string;
+  issuingBody: string;
+  issueDateUtc: string;
+  expiryDateUtc: string;
+  status: CertificateStatus;
+  statusName: string;
+  documentUrl?: string;
+  scopeDescription?: string;
+  responsibleEmployeeId?: string;
+  responsibleEmployeeName?: string;
+  daysUntilExpiry: number;
+  isExpiringSoon: boolean;
+  isExpired: boolean;
+  createdAtUtc: string;
+}
+
+export interface CreateCertificateRequest {
+  name: string;
+  standardCode: string;
+  certificateNumber: string;
+  issuingBody: string;
+  issueDateUtc: string;
+  expiryDateUtc: string;
+  documentUrl?: string;
+  scopeDescription?: string;
+  responsibleEmployeeId?: string;
+}
+
+export interface AuditMeeting {
+  id: string;
+  meetingNumber: string;
+  title: string;
+  auditType: AuditMeetingType;
+  auditTypeName: string;
+  status: AuditMeetingStatus;
+  statusName: string;
+  scheduledDateUtc: string;
+  location: string;
+  leadAuditorEmployeeId?: string;
+  leadAuditorName?: string;
+  auditedDepartmentId?: string;
+  auditedDepartmentName?: string;
+  checklistSummary?: string;
+  findings?: string;
+  nonConformancesCount: number;
+  correctiveActionPlan?: string;
+  completedAtUtc?: string;
+  createdAtUtc: string;
+}
+
+export interface CreateAuditMeetingRequest {
+  title: string;
+  auditType: AuditMeetingType;
+  scheduledDateUtc: string;
+  location: string;
+  leadAuditorEmployeeId?: string;
+  auditedDepartmentId?: string;
+  checklistSummary?: string;
+}
+
+export interface ComplianceDashboard {
+  totalCertificates: number;
+  activeCertificates: number;
+  expiringSoonCertificates: number;
+  expiredCertificates: number;
+  totalAuditMeetings: number;
+  scheduledAuditsCount: number;
+  actionRequiredAuditsCount: number;
+  completedAuditsCount: number;
+}
+
+// ==========================================
+// PAYROLL & COMPENSATION MODELS
+// ==========================================
+
+export type PayrollStatus = 'Draft' | 'PendingHrSheet' | 'HrSheetSubmitted' | 'Approved' | 'Paid' | 'Cancelled';
+
+export interface PayrollRecord {
+  id: string;
+  tenantId: string;
+  payrollNumber: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  departmentName: string;
+  jobTitle: string;
+  email: string;
+  year: number;
+  month: number;
+  payPeriod: string;
+  baseSalary: number;
+  hourlyRate: number;
+  overtimeHours: number;
+  overtimeRate: number;
+  overtimePay: number;
+  bonuses: number;
+  grossPay: number;
+  daysInMonth: number;
+  workingDaysExpected: number;
+  daysPresent: number;
+  daysAbsent: number;
+  absenceDeduction: number;
+  lateOccurrences: number;
+  latePenaltyDeduction: number;
+  negativeVacationDays: number;
+  vacationDeficitDeduction: number;
+  taxRatePercentage: number;
+  taxDeduction: number;
+  socialSecurityDeduction: number;
+  totalDeductions: number;
+  netPay: number;
+  status: PayrollStatus;
+  statusName: string;
+  approvedAtUtc?: string;
+  isEmailedToEmployee: boolean;
+  emailedAtUtc?: string;
+  notes?: string;
+  createdAtUtc: string;
+}
+
+export interface InitiatePayrollRequest {
+  employeeId: string;
+  year: number;
+  month: number;
+  defaultTaxRatePercentage?: number;
+}
+
+export interface SubmitHrSheetRequest {
+  holidaysCount: number;
+  absencesCount: number;
+  overtimeHours: number;
+  consumedDeductionAmount: number;
+  notes?: string;
+}
+
+export interface GeneratePayrollBatchRequest {
+  year: number;
+  month: number;
+  defaultTaxRatePercentage?: number;
+}
+
+export interface ApprovePayrollBatchRequest {
+  year: number;
+  month: number;
+}
+
+export interface PayrollSummary {
+  year: number;
+  month: number;
+  payPeriod: string;
+  totalEmployees: number;
+  draftCount: number;
+  approvedCount: number;
+  emailedCount: number;
+  totalGrossPay: number;
+  totalDeductions: number;
+  totalNetPay: number;
+  totalOvertimePay: number;
+  totalVacationDeficitDeductions: number;
+}
+
+export interface EmployeePayslipSpreadsheet {
+  payrollRecordId: string;
+  payrollNumber: string;
+  employeeName: string;
+  employeeEmail: string;
+  fileName: string;
+  contentType: string;
+  fileContent: string;
+}
+
+export interface SendEmailResult {
+  payrollRecordId: string;
+  employeeName: string;
+  email: string;
+  success: boolean;
+  message: string;
+}
+
+export interface EmployeeSalaryProfile {
+  employeeId: string;
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  jobTitle: string;
+  departmentName: string;
+  branchName: string;
+  hireDateUtc?: string;
+  isActive: boolean;
+
+  // Contract Stored in Database
+  contractType: string;
+  contractStartDateUtc?: string;
+  contractEndDateUtc?: string;
+  contractNotes?: string;
+
+  // Stored Contract Monthly Salary & Strict Pricing Formulas
+  // Day Price = Salary / 30
+  // Hour Price = Day Price / 9 = Salary / 270
+  baseMonthlySalary: number;
+  dailyRate: number;
+  hourlyRate: number;
+  overtimeRate: number;
+
+  // Attendance & Absence Ledger
+  workingDaysExpected: number;
+  daysPresent: number;
+  daysAbsent: number;
+  absenceDeduction: number;
+
+  // Vacation Quota & Deficits
+  vacationDaysAllocated: number;
+  vacationDaysUsed: number;
+  vacationDaysRemaining: number;
+  negativeVacationDays: number;
+  vacationDeficitDeduction: number;
+
+  // Late Occurrences & Penalties
+  lateOccurrences: number;
+  lateHours: number;
+  latePenaltyDeduction: number;
+
+  // Overtime Hours
+  overtimeHours: number;
+  overtimePay: number;
+
+  // Consumed Money
+  consumedSalaryDeductions: number;
+
+  // Total Net Salary Calculation
+  grossPay: number;
+  totalDeductions: number;
+  netPay: number;
 }
 

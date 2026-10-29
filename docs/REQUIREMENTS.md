@@ -246,3 +246,45 @@ To avoid fabricating business logic, the following decisions are documented as r
 - [x] Full Dark Aurora UI with 6-domain KPI matrix, 7-tab operational workspace, interactive SVG charts, direct browser file download, and export history ledger.
 - [x] 57 passing backend tests (100% pass rate) and 0 compilation errors or warnings on frontend production build.
 
+---
+
+### 2.14 Compliance & Audit Governance (Confirmed Specification)
+- **Scope:** Dedicated Compliance & Audit department responsible for regulatory standards, compliance certifications, and internal/external audit meetings.
+- **Certificates Management:**
+  - Track ISO standards (ISO 9001, ISO 27001, ISO 14001), HACCP/Food Safety (Hotels/Hospitality), OSHA, fire safety, and industry licenses.
+  - Certification number, issuing body, issue date, expiration date, renewal alerts (<30 days), and status (`Active`, `ExpiringSoon`, `Expired`, `UnderRenewal`).
+- **Audit Meetings & Inspections:**
+  - Schedule internal and external audit reviews, regulatory inspections, and surveillance meetings.
+  - Track Lead Auditor, target department, audit checklist, findings, non-conformance logs, and corrective action items.
+
+### 2.15 Scoped Vacation Approval & Negative Days Counter (Confirmed Specification)
+- **Live Vacation Counter:**
+  - Track allocated annual vacation days per employee (default 21 days or custom contractual allocation).
+  - During leave request submission, the employee sees a real-time counter of remaining vacation days.
+  - Upon managerial approval, remaining days decrement by the requested duration.
+  - **Negative Vacation Balance:** If remaining days reach 0, further approved leaves count into negative numbers (e.g., `-1`, `-2`, `-3`), representing deficit / unpaid vacation days that feed directly into the payroll engine.
+- **Strict Managerial Scoping:**
+  - A vacation request can **only be viewed** by the employee's direct manager (`ReportsToEmployeeId` or Department Manager) and executive admins.
+  - Only the designated Department Manager / Direct Supervisor has the authority to accept or reject the request for that department's members.
+- **Automated HR Notification & Sync:**
+  - Every accepted vacation request is automatically forwarded and synchronized with the HR Department for attendance roster updating and payroll compensation adjustment.
+
+### 2.16 Internal IT Support Helpdesk (Confirmed Specification)
+- **Scope:** Enable employees across any department (Hotels, Manufacturing, Finance, Stores) to submit internal IT service requests.
+- **Categories:** Hardware/Workstation, Software/Bug, Network/Wi-Fi, Email/Account Access, ERP/PMS System.
+- **SLA Tracking:** IT queue routing, urgency levels (`Urgent`, `High`, `Medium`, `Low`), resolution timelines, and internal discussion comments.
+
+### 2.17 Finance Salary Calculation, Excel Payroll Engine & HR Email Dispatch (Confirmed Specification)
+- **Compensation Profiles:** Monthly base salary, hourly rates, overtime multipliers, and tax/insurance deductions on `EmployeeProfile`.
+- **Automated Calculation Engine:**
+  - Evaluates scheduled shift hours vs. actual effective active work time.
+  - Calculates deductions for unexcused absences, late check-in penalties, and negative vacation days balance.
+  - Calculates overtime additions for approved extra hours.
+  - Computes Gross Salary, total deductions, and Net Salary Payable.
+- **Individual Excel Spreadsheet Generator:**
+  - Generates itemized, formatted Excel (`.xlsx` / CSV) payslip spreadsheets for every individual employee.
+  - Generates consolidated company master payroll ledger for Finance.
+- **HR Review & One-Click Email Dispatch:**
+  - HR reviews and approves the payroll batch in `/app/hr/payroll`.
+  - HR clicks "Send Payslips via Email" to automatically email each employee their personalized Excel payroll sheet.
+

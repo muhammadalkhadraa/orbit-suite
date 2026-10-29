@@ -40,6 +40,8 @@ public class TicketService : ITicketService
 
         var query = _context.SupportTickets
             .Include(t => t.Customer)
+            .Include(t => t.RequestingEmployee)
+            .Include(t => t.TargetDepartment)
             .Include(t => t.AssignedEmployee)
             .Include(t => t.CreatedByEmployee)
             .Include(t => t.Comments)
@@ -49,7 +51,7 @@ public class TicketService : ITicketService
         if (role == TenantRole.Employee)
         {
             var empId = currentEmployee?.Id ?? Guid.Empty;
-            query = query.Where(t => t.AssignedEmployeeId == empId || t.CreatedByEmployeeId == empId);
+            query = query.Where(t => t.AssignedEmployeeId == empId || t.CreatedByEmployeeId == empId || t.RequestingEmployeeId == empId);
         }
         else if (role == TenantRole.Manager)
         {
@@ -57,6 +59,7 @@ public class TicketService : ITicketService
             query = query.Where(t =>
                 t.AssignedEmployeeId == managerId ||
                 t.CreatedByEmployeeId == managerId ||
+                t.RequestingEmployeeId == managerId ||
                 (t.AssignedEmployee != null && t.AssignedEmployee.ReportsToEmployeeId == managerId));
         }
 
@@ -76,6 +79,21 @@ public class TicketService : ITicketService
             query = query.Where(t => t.Category == filter.Category.Value);
         }
 
+        if (filter.IsInternalItTicket.HasValue)
+        {
+            query = query.Where(t => t.IsInternalItTicket == filter.IsInternalItTicket.Value);
+        }
+
+        if (filter.RequestingEmployeeId.HasValue)
+        {
+            query = query.Where(t => t.RequestingEmployeeId == filter.RequestingEmployeeId.Value);
+        }
+
+        if (filter.TargetDepartmentId.HasValue)
+        {
+            query = query.Where(t => t.TargetDepartmentId == filter.TargetDepartmentId.Value);
+        }
+
         if (filter.CustomerId.HasValue)
         {
             query = query.Where(t => t.CustomerId == filter.CustomerId.Value);
@@ -92,7 +110,8 @@ public class TicketService : ITicketService
             query = query.Where(t =>
                 t.TicketNumber.ToLower().Contains(s) ||
                 t.Subject.ToLower().Contains(s) ||
-                t.Customer.CompanyName.ToLower().Contains(s));
+                (t.Customer != null && t.Customer.CompanyName.ToLower().Contains(s)) ||
+                (t.RequestingEmployee != null && (t.RequestingEmployee.FirstName + " " + t.RequestingEmployee.LastName).ToLower().Contains(s)));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -109,8 +128,13 @@ public class TicketService : ITicketService
                 TicketNumber = t.TicketNumber,
                 Subject = t.Subject,
                 Description = t.Description,
+                IsInternalItTicket = t.IsInternalItTicket,
                 CustomerId = t.CustomerId,
-                CustomerName = t.Customer.CompanyName,
+                CustomerName = t.Customer != null ? t.Customer.CompanyName : (t.IsInternalItTicket ? "Internal Company Employee" : string.Empty),
+                RequestingEmployeeId = t.RequestingEmployeeId,
+                RequestingEmployeeName = t.RequestingEmployee != null ? $"{t.RequestingEmployee.FirstName} {t.RequestingEmployee.LastName}".Trim() : null,
+                TargetDepartmentId = t.TargetDepartmentId,
+                TargetDepartmentName = t.TargetDepartment != null ? t.TargetDepartment.Name : null,
                 AssignedEmployeeId = t.AssignedEmployeeId,
                 AssignedEmployeeName = t.AssignedEmployee != null ? $"{t.AssignedEmployee.FirstName} {t.AssignedEmployee.LastName}".Trim() : null,
                 CreatedByEmployeeId = t.CreatedByEmployeeId,
@@ -137,6 +161,8 @@ public class TicketService : ITicketService
 
         var ticket = await _context.SupportTickets
             .Include(t => t.Customer)
+            .Include(t => t.RequestingEmployee)
+            .Include(t => t.TargetDepartment)
             .Include(t => t.AssignedEmployee)
             .Include(t => t.CreatedByEmployee)
             .Include(t => t.Comments)
@@ -151,7 +177,7 @@ public class TicketService : ITicketService
         if (role == TenantRole.Employee)
         {
             var empId = currentEmployee?.Id ?? Guid.Empty;
-            if (ticket.AssignedEmployeeId != empId && ticket.CreatedByEmployeeId != empId)
+            if (ticket.AssignedEmployeeId != empId && ticket.CreatedByEmployeeId != empId && ticket.RequestingEmployeeId != empId)
             {
                 throw new ForbiddenAccessException("You do not have permission to view this support ticket.");
             }
@@ -160,7 +186,7 @@ public class TicketService : ITicketService
         {
             var managerId = currentEmployee?.Id ?? Guid.Empty;
             var isDirectReport = ticket.AssignedEmployee != null && ticket.AssignedEmployee.ReportsToEmployeeId == managerId;
-            if (ticket.AssignedEmployeeId != managerId && ticket.CreatedByEmployeeId != managerId && !isDirectReport)
+            if (ticket.AssignedEmployeeId != managerId && ticket.CreatedByEmployeeId != managerId && ticket.RequestingEmployeeId != managerId && !isDirectReport)
             {
                 throw new ForbiddenAccessException("You do not have permission to access support tickets outside your team scope.");
             }
@@ -181,15 +207,19 @@ public class TicketService : ITicketService
             throw new ValidationException("Description", "Ticket description is required.");
         }
 
-        if (request.CustomerId == Guid.Empty)
+        if (!request.IsInternalItTicket && (!request.CustomerId.HasValue || request.CustomerId.Value == Guid.Empty))
         {
-            throw new ValidationException("CustomerId", "Associated customer account is required.");
+            throw new ValidationException("CustomerId", "Associated customer account is required for customer tickets.");
         }
 
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == request.CustomerId, cancellationToken);
-        if (customer == null)
+        Customer? customer = null;
+        if (request.CustomerId.HasValue && request.CustomerId.Value != Guid.Empty)
         {
-            throw new NotFoundException(nameof(Customer), request.CustomerId);
+            customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == request.CustomerId.Value, cancellationToken);
+            if (customer == null)
+            {
+                throw new NotFoundException(nameof(Customer), request.CustomerId.Value);
+            }
         }
 
         var currentEmployee = await GetCurrentEmployeeAsync(cancellationToken);
@@ -203,7 +233,7 @@ public class TicketService : ITicketService
 
         // Generate sequential ticket number per tenant
         var count = await _context.SupportTickets.CountAsync(cancellationToken);
-        var ticketNumber = $"TCK-{(count + 1001)}";
+        var ticketNumber = request.IsInternalItTicket ? $"IT-{(count + 1001)}" : $"TCK-{(count + 1001)}";
 
         var ticket = new SupportTicket
         {
@@ -211,7 +241,10 @@ public class TicketService : ITicketService
             TicketNumber = ticketNumber,
             Subject = request.Subject.Trim(),
             Description = request.Description.Trim(),
+            IsInternalItTicket = request.IsInternalItTicket,
             CustomerId = request.CustomerId,
+            RequestingEmployeeId = request.RequestingEmployeeId ?? (request.IsInternalItTicket ? currentEmployee?.Id : null),
+            TargetDepartmentId = request.TargetDepartmentId,
             AssignedEmployeeId = assignedId,
             CreatedByEmployeeId = currentEmployee?.Id,
             Status = TicketStatus.Open,
@@ -223,11 +256,12 @@ public class TicketService : ITicketService
         _context.SupportTickets.Add(ticket);
         await _context.SaveChangesAsync(cancellationToken);
 
+        var targetDesc = ticket.IsInternalItTicket ? "Internal IT" : $"customer '{customer?.CompanyName}'";
         await _auditService.LogAsync(
             "Created Support Ticket",
             nameof(SupportTicket),
             ticket.Id.ToString(),
-            $"Created ticket {ticket.TicketNumber}: '{ticket.Subject}' for customer '{customer.CompanyName}' (Priority: {ticket.Priority})",
+            $"Created ticket {ticket.TicketNumber}: '{ticket.Subject}' for {targetDesc} (Priority: {ticket.Priority})",
             cancellationToken);
 
         return await GetTicketByIdAsync(ticket.Id, cancellationToken);
@@ -255,7 +289,10 @@ public class TicketService : ITicketService
 
         ticket.Subject = request.Subject.Trim();
         ticket.Description = request.Description.Trim();
+        ticket.IsInternalItTicket = request.IsInternalItTicket;
         ticket.CustomerId = request.CustomerId;
+        ticket.RequestingEmployeeId = request.RequestingEmployeeId;
+        ticket.TargetDepartmentId = request.TargetDepartmentId;
         ticket.AssignedEmployeeId = request.AssignedEmployeeId;
         ticket.Priority = request.Priority;
         ticket.Category = request.Category;
@@ -511,8 +548,13 @@ public class TicketService : ITicketService
             TicketNumber = ticket.TicketNumber,
             Subject = ticket.Subject,
             Description = ticket.Description,
+            IsInternalItTicket = ticket.IsInternalItTicket,
             CustomerId = ticket.CustomerId,
-            CustomerName = ticket.Customer?.CompanyName ?? string.Empty,
+            CustomerName = ticket.Customer?.CompanyName ?? (ticket.IsInternalItTicket ? "Internal Company Employee" : string.Empty),
+            RequestingEmployeeId = ticket.RequestingEmployeeId,
+            RequestingEmployeeName = ticket.RequestingEmployee != null ? $"{ticket.RequestingEmployee.FirstName} {ticket.RequestingEmployee.LastName}".Trim() : null,
+            TargetDepartmentId = ticket.TargetDepartmentId,
+            TargetDepartmentName = ticket.TargetDepartment?.Name,
             AssignedEmployeeId = ticket.AssignedEmployeeId,
             AssignedEmployeeName = ticket.AssignedEmployee != null ? $"{ticket.AssignedEmployee.FirstName} {ticket.AssignedEmployee.LastName}".Trim() : null,
             CreatedByEmployeeId = ticket.CreatedByEmployeeId,
